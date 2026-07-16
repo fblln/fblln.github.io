@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use wasm_bindgen::{JsCast, closure::Closure};
-use web_sys::{HtmlInputElement, KeyboardEvent};
+use web_sys::{HtmlElement, HtmlInputElement, KeyboardEvent};
 
 #[derive(Clone, Copy)]
 struct Project {
@@ -90,6 +90,10 @@ const CATEGORIES: [&str; 5] = [
     "Research",
 ];
 
+// Measured from the production WebAssembly artifact published on 2026-07-16.
+// This is the uncompressed transfer artifact, not the CI budget (which is gzip).
+const PRODUCTION_WASM_SIZE: &str = "155 KiB";
+
 fn now_ms() -> f64 {
     web_sys::window()
         .and_then(|window| window.performance())
@@ -112,6 +116,16 @@ fn browser_engine() -> String {
     }
 }
 
+fn focus_element(id: &str) {
+    if let Some(element) = web_sys::window()
+        .and_then(|window| window.document())
+        .and_then(|document| document.get_element_by_id(id))
+        .and_then(|element| element.dyn_into::<HtmlElement>().ok())
+    {
+        let _ = element.focus();
+    }
+}
+
 fn project_matches(project: Project, category: &str, query: &str) -> bool {
     let category_match = category == "All" || project.category == category;
     let query = query.trim().to_ascii_lowercase();
@@ -128,24 +142,37 @@ fn project_matches(project: Project, category: &str, query: &str) -> bool {
 
 fn main() {
     console_error_panic_hook::set_once();
-    let boot_started = now_ms();
+    // `performance.now()` here includes document loading, the Trunk loader, and
+    // WebAssembly instantiation. It is intentionally captured before the UI mounts.
+    let boot_time = now_ms();
     if let Some(document) = web_sys::window().and_then(|window| window.document())
         && let Some(boot) = document.get_element_by_id("boot")
     {
         boot.remove();
     }
-    leptos::mount::mount_to_body(move || view! { <App boot_started=boot_started /> });
+    leptos::mount::mount_to_body(move || view! { <App boot_time=boot_time /> });
 }
 
 #[component]
-fn App(boot_started: f64) -> impl IntoView {
+fn App(boot_time: f64) -> impl IntoView {
     let category = RwSignal::new("All".to_string());
     let query = RwSignal::new(String::new());
     let active = RwSignal::new(0usize);
     let expanded = RwSignal::new(None::<usize>);
     let system_open = RwSignal::new(false);
-    let mount_time = format!("{:.1} ms", now_ms() - boot_started);
+    let boot_time = format!("{:.1} ms", boot_time);
     let engine = browser_engine();
+
+    Effect::new(move |_| {
+        if system_open.get() {
+            focus_element("system-close");
+        }
+    });
+    Effect::new(move |_| {
+        if expanded.get().is_some() {
+            focus_element("case-close");
+        }
+    });
 
     let key_handler = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event: KeyboardEvent| {
         let typing = web_sys::window()
@@ -190,6 +217,7 @@ fn App(boot_started: f64) -> impl IntoView {
 
     view! {
         <div class="site-shell">
+            <a class="skip-link" href="#main-content">"Skip to main content"</a>
             <header class="topbar">
                 <a class="wordmark" href="#top" aria-label="Fabio Ellena home">"FE/26"</a>
                 <nav aria-label="Primary navigation">
@@ -198,17 +226,30 @@ fn App(boot_started: f64) -> impl IntoView {
                     <a href="#experience">"Experience"</a>
                     <a href="#contact">"Contact"</a>
                 </nav>
-                <button class="runtime-button" class:active=move || system_open.get() on:click=move |_| system_open.update(|open| *open = !*open)>
+                <button
+                    class="runtime-button"
+                    class:active=move || system_open.get()
+                    aria-controls="system-panel"
+                    aria-expanded=move || system_open.get().to_string()
+                    on:click=move |_| system_open.update(|open| *open = !*open)
+                >
                     <span class="status-dot"></span>"WASM/ACTIVE"
                 </button>
             </header>
 
-            <main id="top">
-                <section class="hero section-grid">
+            <main id="main-content" tabindex="-1">
+                <section id="top" class="hero section-grid">
                     <div class="section-index">"00"</div>
                     <div class="hero-content">
                         <p class="eyebrow">"FABIO ELLENA · SENIOR STAFF SOFTWARE ENGINEER · TURIN"</p>
                         <h1>"SOFTWARE SHOULD "<br/><em>"SURVIVE"</em><br/>"CONTACT WITH PRODUCTION."</h1>
+                        <div class="runtime-facts" aria-label="Application runtime facts">
+                            <span>"LEPTOS CSR"</span>
+                            <span>"RUST/WASM"</span>
+                            <span>"0 SERVER RENDERING"</span>
+                            <span>{format!("{} WASM", PRODUCTION_WASM_SIZE)}</span>
+                            <span>{format!("BOOT {}", boot_time)}</span>
+                        </div>
                         <div class="hero-bottom">
                             <p>"I build distributed systems, telemetry platforms, and local-first AI tools for problems where scale, evidence, and reliability are not optional."</p>
                             <div class="hero-actions">
@@ -263,7 +304,14 @@ fn App(boot_started: f64) -> impl IntoView {
                                     class:hidden=move || !project_matches(project, &category.get(), &query.get())
                                     id=project.slug
                                 >
-                                    <button class="project-open" on:click=move |_| { active.set(index); expanded.set(Some(index)); } aria-label=format!("Open {} case study", project.name)>
+                                    <button
+                                        class="project-open"
+                                        aria-controls="case-study"
+                                        aria-expanded=move || (expanded.get() == Some(index)).to_string()
+                                        aria-haspopup="dialog"
+                                        on:click=move |_| { active.set(index); expanded.set(Some(index)); }
+                                        aria-label=format!("Open {} case study", project.name)
+                                    >
                                         <span class="project-number">{format!("{:02}", index + 1)}</span>
                                         <span class="project-name">{project.name}</span>
                                         <span class="project-stack">{project.stack}</span>
@@ -338,13 +386,14 @@ fn App(boot_started: f64) -> impl IntoView {
                 <button on:click=move |_| system_open.set(true)>"INSPECT RUNTIME [S]"</button>
             </footer>
 
-            <aside class="system-panel" class:open=move || system_open.get() aria-hidden=move || (!system_open.get()).to_string()>
-                <div class="panel-head"><span>"SYSTEM/DIAGNOSTICS"</span><button on:click=move |_| system_open.set(false)>"CLOSE [ESC]"</button></div>
+            <aside id="system-panel" class="system-panel" class:open=move || system_open.get() hidden=move || !system_open.get() aria-label="Runtime diagnostics">
+                <div class="panel-head"><span>"SYSTEM/DIAGNOSTICS"</span><button id="system-close" on:click=move |_| system_open.set(false)>"CLOSE [ESC]"</button></div>
                 <div class="diagnostic-grid">
                     <div><span>"APPLICATION"</span><strong>"LEPTOS CSR"</strong></div>
                     <div><span>"TARGET"</span><strong>"WASM32-UNKNOWN-UNKNOWN"</strong></div>
                     <div><span>"BROWSER ENGINE"</span><strong>{engine}</strong></div>
-                    <div><span>"MOUNT"</span><strong>{mount_time}</strong></div>
+                    <div><span>"BOOT TO WASM ENTRY"</span><strong>{boot_time}</strong></div>
+                    <div><span>"PRODUCTION WASM"</span><strong>{PRODUCTION_WASM_SIZE}</strong></div>
                     <div><span>"RENDERER"</span><strong>"DOM + SVG"</strong></div>
                     <div><span>"BUNDLE BUDGET"</span><strong>"≤ 500 KIB GZIP"</strong></div>
                     <div><span>"APP CODE"</span><strong>"100% RUST"</strong></div>
@@ -353,13 +402,13 @@ fn App(boot_started: f64) -> impl IntoView {
                 <p>"The browser received a Rust application compiled to WebAssembly. Project data is embedded at build time; there is no client-side GitHub API dependency."</p>
             </aside>
 
-            <div class="case-overlay" class:open=move || expanded.get().is_some() aria-hidden=move || expanded.get().is_none().to_string()>
+            <div id="case-study" class="case-overlay" class:open=move || expanded.get().is_some() hidden=move || expanded.get().is_none()>
                 <button class="overlay-backdrop" aria-label="Close case study" on:click=move |_| expanded.set(None)></button>
-                <article class="case-panel">
-                    <div class="panel-head"><span>{move || expanded.get().map(|index| format!("CASE/{:02}", index + 1)).unwrap_or_default()}</span><button on:click=move |_| expanded.set(None)>"CLOSE [ESC]"</button></div>
+                <article class="case-panel" role="dialog" aria-modal="true" aria-labelledby="case-title">
+                    <div class="panel-head"><span>{move || expanded.get().map(|index| format!("CASE/{:02}", index + 1)).unwrap_or_default()}</span><button id="case-close" on:click=move |_| expanded.set(None)>"CLOSE [ESC]"</button></div>
                     <div class="case-body">
                         <p class="eyebrow">{move || expanded.get().map(|index| PROJECTS[index].stack).unwrap_or("")}</p>
-                        <h2>{move || expanded.get().map(|index| PROJECTS[index].name).unwrap_or("")}</h2>
+                        <h2 id="case-title">{move || expanded.get().map(|index| PROJECTS[index].name).unwrap_or("")}</h2>
                         <p class="case-statement">{move || expanded.get().map(|index| PROJECTS[index].statement).unwrap_or("")}</p>
                         <div class="case-metric"><strong>{move || expanded.get().map(|index| PROJECTS[index].metric).unwrap_or("")}</strong><span>{move || expanded.get().map(|index| PROJECTS[index].metric_label).unwrap_or("")}</span></div>
                         <p>{move || expanded.get().map(|index| PROJECTS[index].detail).unwrap_or("")}</p>
