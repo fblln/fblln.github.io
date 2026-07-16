@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: trunk
+      - name: Format
+        run: cargo fmt --check
+      - name: Unit tests
+        run: cargo test
+      - name: Check WebAssembly target
+        run: cargo check --target wasm32-unknown-unknown
+      - name: Build release site
+        env:
+          BUILD_SHA: ${{ github.sha }}
+        run: trunk build --release
+      - name: Enforce compressed WASM budget
+        run: |
+          wasm_file="$(find dist -type f -name '*.wasm' -print -quit)"
+          test -n "$wasm_file"
+          gzip -9 -c "$wasm_file" > /tmp/app.wasm.gz
+          bytes="$(wc -c < /tmp/app.wasm.gz)"
+          echo "Compressed WASM: ${bytes} bytes"
+          test "$bytes" -le 512000
+
