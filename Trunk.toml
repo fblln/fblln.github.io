@@ -3,7 +3,16 @@ target = "index.html"
 dist = "dist"
 public_url = "/"
 filehash = true
-minify = "always"
+# Minification is done by the esbuild post_build hook, not trunk's bundled
+# minify-js (which can't parse the wasm-bindgen loader). no_sri lets the hook
+# rewrite the hashed assets without invalidating integrity attributes.
+minify = "never"
+no_sri = true
+
+[[hooks]]
+stage = "post_build"
+command = "sh"
+command_arguments = ["tools/minify.sh"]
 
 [watch]
 watch = ["src", "styles.css", "index.html", "assets"]

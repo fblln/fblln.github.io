@@ -26,6 +26,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: trunk
+      - name: Install esbuild
+        run: npm i -g esbuild@0.28.1
       - uses: actions/configure-pages@v5
       - name: Build release site
         env:

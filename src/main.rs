@@ -90,9 +90,34 @@ const CATEGORIES: [&str; 5] = [
     "Research",
 ];
 
-// Measured from the production WebAssembly artifact published on 2026-07-16.
-// This is the uncompressed transfer artifact, not the CI budget (which is gzip).
+// Fallback shown only if the browser exposes no Resource Timing entry for the
+// WASM (very old browsers). Normal path reports the real bytes this client got.
 const PRODUCTION_WASM_SIZE: &str = "155 KiB";
+
+// The actual compressed bytes the browser downloaded for the WASM module, read
+// from the Resource Timing API. `encoded_body_size` is the on-the-wire body
+// (gzip on GitHub Pages); it stays non-zero on cache hits, unlike `transfer_size`.
+fn wasm_transfer_size() -> Option<String> {
+    let entries = web_sys::window()?
+        .performance()?
+        .get_entries_by_type("resource");
+    entries
+        .iter()
+        .filter_map(|entry| entry.dyn_into::<web_sys::PerformanceResourceTiming>().ok())
+        .find(|res| res.name().ends_with(".wasm"))
+        .map(|res| res.encoded_body_size())
+        .filter(|&bytes| bytes > 0.0)
+        .map(human_bytes)
+}
+
+// Scales to KiB or MiB so the debug build (~3.7 MiB) doesn't read as "3800 KiB".
+fn human_bytes(bytes: f64) -> String {
+    if bytes >= 1024.0 * 1024.0 {
+        format!("{:.1} MiB", bytes / (1024.0 * 1024.0))
+    } else {
+        format!("{:.0} KiB", bytes / 1024.0)
+    }
+}
 
 fn now_ms() -> f64 {
     web_sys::window()
@@ -145,22 +170,26 @@ fn main() {
     // `performance.now()` here includes document loading, the Trunk loader, and
     // WebAssembly instantiation. It is intentionally captured before the UI mounts.
     let boot_time = now_ms();
+    let wasm_size = wasm_transfer_size().unwrap_or_else(|| PRODUCTION_WASM_SIZE.to_string());
     if let Some(document) = web_sys::window().and_then(|window| window.document())
         && let Some(boot) = document.get_element_by_id("boot")
     {
         boot.remove();
     }
-    leptos::mount::mount_to_body(move || view! { <App boot_time=boot_time /> });
+    leptos::mount::mount_to_body(move || {
+        view! { <App boot_time=boot_time wasm_size=wasm_size.clone() /> }
+    });
 }
 
 #[component]
-fn App(boot_time: f64) -> impl IntoView {
+fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
     let category = RwSignal::new("All".to_string());
     let query = RwSignal::new(String::new());
     let active = RwSignal::new(0usize);
     let expanded = RwSignal::new(None::<usize>);
     let system_open = RwSignal::new(false);
     let boot_time = format!("{:.1} ms", boot_time);
+    let hero_wasm_size = format!("{wasm_size} WASM");
     let engine = browser_engine();
 
     Effect::new(move |_| {
@@ -247,7 +276,7 @@ fn App(boot_time: f64) -> impl IntoView {
                             <span>"LEPTOS CSR"</span>
                             <span>"RUST/WASM"</span>
                             <span>"0 SERVER RENDERING"</span>
-                            <span>{format!("{} WASM", PRODUCTION_WASM_SIZE)}</span>
+                            <span>{hero_wasm_size}</span>
                             <span>{format!("BOOT {}", boot_time)}</span>
                         </div>
                         <div class="hero-bottom">
@@ -367,7 +396,7 @@ fn App(boot_time: f64) -> impl IntoView {
                 </section>
 
                 <section id="contact" class="contact">
-                    <img src="/assets/fabio.jpg" alt="Fabio Ellena" width="460" height="460" />
+                    <img src="/assets/fabio.webp" alt="Fabio Ellena" width="460" height="460" />
                     <div>
                         <p class="eyebrow">"OPEN TO HARD PROBLEMS"</p>
                         <h2>"LET'S BUILD SOMETHING THAT HAS TO WORK."</h2>
@@ -393,7 +422,7 @@ fn App(boot_time: f64) -> impl IntoView {
                     <div><span>"TARGET"</span><strong>"WASM32-UNKNOWN-UNKNOWN"</strong></div>
                     <div><span>"BROWSER ENGINE"</span><strong>{engine}</strong></div>
                     <div><span>"BOOT TO WASM ENTRY"</span><strong>{boot_time}</strong></div>
-                    <div><span>"PRODUCTION WASM"</span><strong>{PRODUCTION_WASM_SIZE}</strong></div>
+                    <div><span>"WASM RECEIVED"</span><strong>{wasm_size}</strong></div>
                     <div><span>"RENDERER"</span><strong>"DOM + SVG"</strong></div>
                     <div><span>"BUNDLE BUDGET"</span><strong>"≤ 500 KIB GZIP"</strong></div>
                     <div><span>"APP CODE"</span><strong>"100% RUST"</strong></div>
