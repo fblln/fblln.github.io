@@ -390,7 +390,6 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                         <div class="degree-list">
                             <article><strong>"M.SC. DATA SCIENCE"</strong><span>"EURECOM · TÉLÉCOM PARISTECH · GPA 4.0"</span></article>
                             <article><strong>"M.SC. COMPUTER ENGINEERING"</strong><span>"POLITECNICO DI TORINO · 110 CUM LAUDE"</span></article>
-                            <article><strong>"B.SC. COMPUTER ENGINEERING"</strong><span>"POLITECNICO DI TORINO"</span></article>
                         </div>
                     </div>
                 </section>
