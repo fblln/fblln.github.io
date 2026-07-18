@@ -171,14 +171,39 @@ fn main() {
     // WebAssembly instantiation. It is intentionally captured before the UI mounts.
     let boot_time = now_ms();
     let wasm_size = wasm_transfer_size().unwrap_or_else(|| PRODUCTION_WASM_SIZE.to_string());
-    if let Some(document) = web_sys::window().and_then(|window| window.document())
-        && let Some(boot) = document.get_element_by_id("boot")
-    {
-        boot.remove();
-    }
+    // Mount the app *before* dismissing the boot overlay so the site paints
+    // underneath the still-opaque dark boot screen, then fade the overlay away.
+    // Removing the overlay in the same frame the app mounts cut hard from the
+    // dark boot to the light site — a visible dark→light flash on load.
     leptos::mount::mount_to_body(move || {
         view! { <App boot_time=boot_time wasm_size=wasm_size.clone() /> }
     });
+    dismiss_boot_overlay();
+}
+
+// Reveal the mounted site by fading the boot overlay out instead of snapping it
+// away. `.boot-hide` transitions opacity to 0 over the dark screen; once faded we
+// drop the node from the DOM so it leaves no stray full-screen layer (and no
+// duplicate <main>/landmark for assistive tech). The timed removal is the
+// backstop: under `prefers-reduced-motion` the CSS transition is ~instant and no
+// `transitionend` we could rely on fires, so we always clean up on a fixed delay
+// slightly longer than the fade.
+fn dismiss_boot_overlay() {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let Some(boot) = window
+        .document()
+        .and_then(|document| document.get_element_by_id("boot"))
+    else {
+        return;
+    };
+    let _ = boot.set_attribute("class", "boot boot-hide");
+    // `once_into_js` hands ownership to the JS runtime, so the closure outlives
+    // this function and is freed after it fires — no manual `forget`/leak.
+    let remove = Closure::once_into_js(move || boot.remove());
+    let _ =
+        window.set_timeout_with_callback_and_timeout_and_arguments_0(remove.unchecked_ref(), 460);
 }
 
 #[component]
@@ -251,7 +276,7 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                 <a class="wordmark" href="#top" aria-label="Fabio Ellena home">"FE/26"</a>
                 <nav aria-label="Primary navigation">
                     <a href="#work">"Work"</a>
-                    <a href="#impact">"Impact"</a>
+                    <a href="#capabilities">"Stack"</a>
                     <a href="#experience">"Experience"</a>
                     <a href="#contact">"Contact"</a>
                     <a href="/articles/">"Writing"</a>
@@ -269,7 +294,7 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                     <summary aria-label="Toggle navigation menu">"MENU"</summary>
                     <nav aria-label="Primary navigation">
                         <a href="#work">"Work"</a>
-                        <a href="#impact">"Impact"</a>
+                        <a href="#capabilities">"Stack"</a>
                         <a href="#experience">"Experience"</a>
                         <a href="#contact">"Contact"</a>
                         <a href="/articles/">"Writing"</a>
@@ -380,27 +405,92 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                     </div>
                 </section>
 
-                <section id="experience" class="experience section-grid">
+                <section id="capabilities" class="capabilities section-grid">
                     <div class="section-index">"03"</div>
+                    <div>
+                        <div class="section-heading"><div><p class="eyebrow">"WHAT I WORK WITH"</p><h2>"THE STACK"</h2></div><p>"Eight years across languages, cloud platforms, and the messaging and observability tooling that keeps distributed systems fast, traceable, and honest."</p></div>
+                        <div class="capability-grid">
+                            <article><h3>"LANGUAGES"</h3><div class="cap-tags"><span>"Java"</span><span>"TypeScript"</span><span>"Python"</span><span>"C#"</span><span>"SQL"</span></div></article>
+                            <article><h3>"BACKEND"</h3><div class="cap-tags"><span>"Spring Boot"</span><span>"Quarkus"</span><span>"REST APIs"</span><span>"Event-Driven Architecture"</span><span>"API Design"</span></div></article>
+                            <article><h3>"CLOUD & INFRASTRUCTURE"</h3><div class="cap-tags"><span>"AWS"</span><span>"Kubernetes"</span><span>"Docker"</span><span>"Serverless"</span><span>"Linux"</span></div></article>
+                            <article><h3>"DATA & MESSAGING"</h3><div class="cap-tags"><span>"Kafka"</span><span>"Kinesis"</span><span>"SQS"</span><span>"MongoDB"</span><span>"DynamoDB"</span><span>"S3"</span></div></article>
+                            <article><h3>"OBSERVABILITY"</h3><div class="cap-tags"><span>"OpenTelemetry"</span><span>"ELK Stack"</span><span>"CloudWatch"</span><span>"Distributed Tracing"</span></div></article>
+                            <article><h3>"CI/CD & QUALITY"</h3><div class="cap-tags"><span>"GitHub Actions"</span><span>"TeamCity"</span><span>"Jenkins"</span><span>"SonarQube"</span><span>"Checkmarx"</span></div></article>
+                            <article><h3>"AI & DEVELOPER PRODUCTIVITY"</h3><div class="cap-tags"><span>"Agentic Workflows"</span><span>"AI-Assisted Development"</span><span>"MCP Integrations"</span><span>"Developer Experience"</span></div></article>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="experience" class="experience section-grid">
+                    <div class="section-index">"04"</div>
                     <div>
                         <div class="section-heading"><div><p class="eyebrow">"2017 → NOW"</p><h2>"EXPERIENCE"</h2></div><p>"From on-device ML to platforms serving millions of connected vehicles."</p></div>
                         <div class="timeline">
-                            <article><time>"2024—NOW"</time><div><h3>"Senior Staff Software Engineer"</h3><p>"Stellantis · Connected Services"</p></div><p>"Leading the consolidation and technical strategy of global connected-service API platforms."</p></article>
-                            <article><time>"2023—2024"</time><div><h3>"Staff Software Engineer"</h3><p>"Stellantis · Connected Services"</p></div><p>"Scaled engineering practices, developer experience, and architecture across a 20+ person organization."</p></article>
-                            <article><time>"2022—2023"</time><div><h3>"Technical Lead"</h3><p>"FCA · Connected Services"</p></div><p>"Led telemetry and ecosystem integrations for globally connected vehicle services."</p></article>
-                            <article><time>"2018—2022"</time><div><h3>"Software Engineer"</h3><p>"Concept Reply"</p></div><p>"Built cloud-native IoT, telemetry, and device platforms supporting 100K+ devices."</p></article>
-                            <article><time>"2017—2018"</time><div><h3>"ML Engineer Intern"</h3><p>"Docapost · Nice"</p></div><p>"Built constrained on-device document classification and reduced manual annotation by roughly 50%."</p></article>
+                            <article><time>"2024—NOW"</time><div><h3>"Senior Staff Software Engineer"</h3><p>"Stellantis · Connected Services"</p></div><p>"Merging two decades of divergent FCA and PSA APIs into a single connected-services platform. I set the technical direction for 100+ B2B and consumer services, made the fleet observable with OpenTelemetry and ELK so millions of vehicles can be traced and debugged in production, and moved delivery off TeamCity onto GitHub Actions — releases stopped being events and became routine."</p></article>
+                            <article><time>"2023—2024"</time><div><h3>"Staff Software Engineer"</h3><p>"Stellantis · Connected Services"</p></div><p>"Joined to turn a green-field team into an organization. Grew it from zero to 20+ engineers, wrote the developer-experience and delivery standards it still runs on, and helped ship the Jeep Avenger connected-services launch across every domain it touched."</p></article>
+                            <article><time>"2022—2023"</time><div><h3>"Technical Lead"</h3><p>"FCA · Connected Services"</p></div><p>"Owned the telemetry platform ingesting live data from 10M+ vehicles, and wired the car into the world around it — EV charging networks, mapping providers, ecosystem partners — while trimming the AWS bill through architecture the scale finally justified."</p></article>
+                            <article><time>"2018—2022"</time><div><h3>"Software Engineer"</h3><p>"Concept Reply"</p></div><p>"Built the cloud-native backbone for Grohe's smart-home ecosystem: 100K+ connected devices, their telemetry, device management, and enterprise integrations. On the side, I delivered a Beretta Android app that turned raw performance data into guided, real-time training."</p></article>
+                            <article><time>"2017—2018"</time><div><h3>"ML Engineer Intern"</h3><p>"Docapost · Nice"</p></div><p>"Started where the data was messiest: an on-device model classifying documents in real time under tight constraints, paired with a semi-automated labeling pipeline that cut manual annotation roughly in half."</p></article>
                         </div>
                     </div>
                 </section>
 
                 <section class="education section-grid">
-                    <div class="section-index">"04"</div>
+                    <div class="section-index">"05"</div>
                     <div class="education-layout">
-                        <div><p class="eyebrow">"FOUNDATIONS"</p><h2>"TWO MASTER'S. ONE SYSTEMS MINDSET."</h2></div>
-                        <div class="degree-list">
-                            <article><strong>"M.Sc. Data Science"</strong><span>"EURECOM · TÉLÉCOM PARISTECH · GPA 4.0"</span></article>
-                            <article><strong>"M.Sc. Computer Engineering"</strong><span>"POLITECNICO DI TORINO · 110 CUM LAUDE"</span></article>
+                        <div>
+                            <p class="eyebrow">"FOUNDATIONS"</p>
+                            <h2>"TWO MASTER'S. ONE SYSTEMS MINDSET."</h2>
+                            <div class="publication">
+                                <p class="cred-label">"PUBLICATION"</p>
+                                <strong>"CityMUS: Music Recommendation When Exploring a City"</strong>
+                                <p>"A context-aware recommender that fuses DBpedia knowledge graphs with the Spotify API to generate location-based, personalized listening as you move through a city."</p>
+                                <div class="pub-links">
+                                    <a href="https://ceur-ws.org/Vol-1963/paper569.pdf" target="_blank" rel="noreferrer">"Paper · PDF ↗"</a>
+                                    <a href="https://docs.google.com/presentation/d/1UqjRT2UrgYTE65wLAtynNRMo0Bks29aV3gOQjVfmrdU/edit?usp=sharing" target="_blank" rel="noreferrer">"Slides ↗"</a>
+                                    <a href="https://github.com/D2KLab/CityMUS" target="_blank" rel="noreferrer">"Code ↗"</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="cred-label">"DEGREES"</p>
+                            <div class="degree-list">
+                                <article><strong>"M.Sc. Data Science"</strong><span>"EURECOM · TÉLÉCOM PARISTECH · GPA 4.0"</span></article>
+                                <article><strong>"M.Sc. Computer Engineering"</strong><span>"POLITECNICO DI TORINO · 110 CUM LAUDE"</span></article>
+                                <article><strong>"B.Sc. Computer Engineering"</strong><span>"POLITECNICO DI TORINO"</span></article>
+                            </div>
+                            <p class="cred-label">"CERTIFICATIONS"</p>
+                            <div class="degree-list">
+                                <article><strong>"Nanodegree · Machine Learning DevOps"</strong><span>"UDACITY · 2025"</span></article>
+                                <article><strong>"Nanodegree · Generative AI"</strong><span>"UDACITY · 2024"</span></article>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="interests" class="interests section-grid">
+                    <div class="section-index">"06"</div>
+                    <div>
+                        <div class="section-heading"><div><p class="eyebrow">"OFF THE CLOCK"</p><h2>"WHERE THE WORK COMES FROM"</h2></div><p>"The projects aren't separate from the hobbies. The mountains and the night sky are where the problems start; the repositories and the writing are where they end up."</p></div>
+                        <div class="interest-grid">
+                            <article>
+                                <p class="eyebrow">"ALTITUDE"</p>
+                                <h3>"ALPINE TREKKING"</h3>
+                                <p>"The Alps are where the terrain work started. Every GPX track I record is elevation, slope, and forest cover waiting to be sampled — which is exactly what Ridgeline turns into a 3D artifact. The mountains are the field test; the code is the souvenir."</p>
+                                <div class="interest-links">
+                                    <a href="#ridgeline">"Ridgeline ↓"</a>
+                                    <a href="https://github.com/fblln/ridgeline" target="_blank" rel="noreferrer">"Repository ↗"</a>
+                                </div>
+                            </article>
+                            <article>
+                                <p class="eyebrow">"SIGNAL"</p>
+                                <h3>"ASTROPHOTOGRAPHY"</h3>
+                                <p>"Astrophotography is telemetry with a longer exposure: stacking faint signal out of noise, trusting your calibration frames, and staying honest about what the data can and can't show. The same instincts behind a clean night-sky image build a trustworthy race-telemetry pipeline."</p>
+                                <div class="interest-links">
+                                    <a href="#race-telemetry">"Race Telemetry ↓"</a>
+                                    <a href="/articles/">"Field notes ↗"</a>
+                                </div>
+                            </article>
                         </div>
                     </div>
                 </section>
