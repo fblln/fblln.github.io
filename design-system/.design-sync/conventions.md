@@ -25,7 +25,7 @@ Style your own layout glue with the **CSS custom properties** the system defines
   accent), `--muted` (secondary text on paper), `--muted-invert` (secondary text on
   ink), `--line` (hairline on paper), `--line-invert` (hairline on ink), `--code-bg`,
   `--ok` (healthy green).
-- Type: `--font-sans` (Arial/Helvetica — UI + display), `--font-mono` (Courier New —
+- Type: `--font-sans` (Archivo — UI + display), `--font-mono` (IBM Plex Mono —
   labels, meta, values), `--font-reading` (Charter/Georgia serif — long-form body).
 - Spacing: `--pad` (the standard responsive section padding).
 

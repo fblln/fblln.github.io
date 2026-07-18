@@ -265,6 +265,16 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                 >
                     <span class="status-dot"></span>"WASM/ACTIVE"
                 </button>
+                <details class="mobile-nav">
+                    <summary aria-label="Toggle navigation menu">"MENU"</summary>
+                    <nav aria-label="Primary navigation">
+                        <a href="#work">"Work"</a>
+                        <a href="#impact">"Impact"</a>
+                        <a href="#experience">"Experience"</a>
+                        <a href="#contact">"Contact"</a>
+                        <a href="/articles/">"Writing"</a>
+                    </nav>
+                </details>
             </header>
 
             <main id="main-content" tabindex="-1">
@@ -375,11 +385,11 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                     <div>
                         <div class="section-heading"><div><p class="eyebrow">"2017 → NOW"</p><h2>"EXPERIENCE"</h2></div><p>"From on-device ML to platforms serving millions of connected vehicles."</p></div>
                         <div class="timeline">
-                            <article><time>"2024—NOW"</time><div><h3>"SENIOR STAFF SOFTWARE ENGINEER"</h3><p>"Stellantis · Connected Services"</p></div><p>"Leading the consolidation and technical strategy of global connected-service API platforms."</p></article>
-                            <article><time>"2023—2024"</time><div><h3>"STAFF SOFTWARE ENGINEER"</h3><p>"Stellantis · Connected Services"</p></div><p>"Scaled engineering practices, developer experience, and architecture across a 20+ person organization."</p></article>
-                            <article><time>"2022—2023"</time><div><h3>"TECHNICAL LEAD"</h3><p>"FCA · Connected Services"</p></div><p>"Led telemetry and ecosystem integrations for globally connected vehicle services."</p></article>
-                            <article><time>"2018—2022"</time><div><h3>"SOFTWARE ENGINEER"</h3><p>"Concept Reply"</p></div><p>"Built cloud-native IoT, telemetry, and device platforms supporting 100K+ devices."</p></article>
-                            <article><time>"2017—2018"</time><div><h3>"ML ENGINEER INTERN"</h3><p>"Docapost · Nice"</p></div><p>"Built constrained on-device document classification and reduced manual annotation by roughly 50%."</p></article>
+                            <article><time>"2024—NOW"</time><div><h3>"Senior Staff Software Engineer"</h3><p>"Stellantis · Connected Services"</p></div><p>"Leading the consolidation and technical strategy of global connected-service API platforms."</p></article>
+                            <article><time>"2023—2024"</time><div><h3>"Staff Software Engineer"</h3><p>"Stellantis · Connected Services"</p></div><p>"Scaled engineering practices, developer experience, and architecture across a 20+ person organization."</p></article>
+                            <article><time>"2022—2023"</time><div><h3>"Technical Lead"</h3><p>"FCA · Connected Services"</p></div><p>"Led telemetry and ecosystem integrations for globally connected vehicle services."</p></article>
+                            <article><time>"2018—2022"</time><div><h3>"Software Engineer"</h3><p>"Concept Reply"</p></div><p>"Built cloud-native IoT, telemetry, and device platforms supporting 100K+ devices."</p></article>
+                            <article><time>"2017—2018"</time><div><h3>"ML Engineer Intern"</h3><p>"Docapost · Nice"</p></div><p>"Built constrained on-device document classification and reduced manual annotation by roughly 50%."</p></article>
                         </div>
                     </div>
                 </section>
@@ -389,8 +399,8 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                     <div class="education-layout">
                         <div><p class="eyebrow">"FOUNDATIONS"</p><h2>"TWO MASTER'S. ONE SYSTEMS MINDSET."</h2></div>
                         <div class="degree-list">
-                            <article><strong>"M.SC. DATA SCIENCE"</strong><span>"EURECOM · TÉLÉCOM PARISTECH · GPA 4.0"</span></article>
-                            <article><strong>"M.SC. COMPUTER ENGINEERING"</strong><span>"POLITECNICO DI TORINO · 110 CUM LAUDE"</span></article>
+                            <article><strong>"M.Sc. Data Science"</strong><span>"EURECOM · TÉLÉCOM PARISTECH · GPA 4.0"</span></article>
+                            <article><strong>"M.Sc. Computer Engineering"</strong><span>"POLITECNICO DI TORINO · 110 CUM LAUDE"</span></article>
                         </div>
                     </div>
                 </section>
