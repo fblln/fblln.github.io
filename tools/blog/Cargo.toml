@@ -1,0 +1,17 @@
+[package]
+name = "blog"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Host-side static-site generator run by trunk's post_build hook. Turns
+# content/articles/*.md into static HTML under dist/articles/. Not part of the
+# wasm app build (separate manifest / target dir).
+[dependencies]
+pulldown-cmark = "0.12"
+serde = { version = "1", features = ["derive"] }
+syntect = { version = "5", default-features = false, features = ["default-fancy", "html"] }
+toml = "0.8"
+
+[profile.release]
+opt-level = 1

@@ -9,13 +9,19 @@ filehash = true
 minify = "never"
 no_sri = true
 
+# Generate static article pages from content/articles/*.md into dist/articles/.
+[[hooks]]
+stage = "post_build"
+command = "cargo"
+command_arguments = ["run", "--quiet", "--manifest-path", "tools/blog/Cargo.toml"]
+
 [[hooks]]
 stage = "post_build"
 command = "sh"
 command_arguments = ["tools/minify.sh"]
 
 [watch]
-watch = ["src", "styles.css", "index.html", "assets"]
+watch = ["src", "styles.css", "index.html", "assets", "content", "tools/blog/article.css"]
 ignore = ["dist"]
 
 [serve]

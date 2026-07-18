@@ -254,6 +254,7 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                     <a href="#impact">"Impact"</a>
                     <a href="#experience">"Experience"</a>
                     <a href="#contact">"Contact"</a>
+                    <a href="/articles/">"Writing"</a>
                 </nav>
                 <button
                     class="runtime-button"
@@ -410,6 +411,7 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
 
             <footer>
                 <span>"© 2026 FABIO ELLENA"</span>
+                <a href="/articles/">"WRITING ↗"</a>
                 <span>"FULL RUST · LEPTOS · WASM32"</span>
                 <button on:click=move |_| system_open.set(true)>"INSPECT RUNTIME [S]"</button>
             </footer>

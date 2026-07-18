@@ -1,0 +1,426 @@
+//! Static article generator. Reads `content/articles/*.md` (TOML front matter +
+//! Markdown) and writes SEO-friendly static HTML under `<staging>/articles/`,
+//! plus an index, per-tag pages, an Atom feed, and a refreshed sitemap.xml.
+//!
+//! Run by trunk's post_build hook; the output dir comes from TRUNK_STAGING_DIR
+//! (an explicit arg overrides it for manual runs). Code blocks are highlighted
+//! at build time with syntect — no client-side JS.
+
+use std::{env, fs, path::PathBuf};
+
+use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use serde::Deserialize;
+use syntect::highlighting::ThemeSet;
+use syntect::html::{css_for_theme_with_class_style, ClassStyle, ClassedHTMLGenerator};
+use syntect::parsing::SyntaxSet;
+use syntect::util::LinesWithEndings;
+
+const BASE: &str = "https://fblln.github.io";
+const AUTHOR: &str = "Fabio Ellena";
+const READING_CSS: &str = include_str!("../article.css");
+
+#[derive(Deserialize)]
+struct FrontMatter {
+    title: String,
+    date: String, // ISO "YYYY-MM-DD"
+    #[serde(default)]
+    description: String,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    draft: bool,
+}
+
+struct Head {
+    level: u8,
+    text: String,
+    id: String,
+}
+
+struct Article {
+    slug: String,
+    fm: FrontMatter,
+    body: String,
+    toc: Vec<Head>,
+    minutes: usize,
+}
+
+impl Article {
+    fn url(&self) -> String {
+        format!("{BASE}/articles/{}/", self.slug)
+    }
+}
+
+fn main() {
+    let out_root = env::args()
+        .nth(1)
+        .or_else(|| env::var("TRUNK_STAGING_DIR").ok())
+        .map(PathBuf::from)
+        .expect("pass an output dir or set TRUNK_STAGING_DIR");
+    let articles_dir = out_root.join("articles");
+    fs::create_dir_all(&articles_dir).expect("create articles dir");
+
+    let ss = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+    let code_css = css_for_theme_with_class_style(&ts.themes["base16-ocean.dark"], ClassStyle::Spaced)
+        .expect("code theme css");
+    fs::write(
+        articles_dir.join("article.css"),
+        format!("{READING_CSS}\n{code_css}\n"),
+    )
+    .expect("write article.css");
+
+    let mut articles: Vec<Article> = Vec::new();
+    let content = PathBuf::from("content/articles");
+    if let Ok(entries) = fs::read_dir(&content) {
+        for entry in entries {
+            let path = entry.expect("dir entry").path();
+            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+                continue;
+            }
+            let raw = fs::read_to_string(&path).expect("read md");
+            let stem = path.file_stem().unwrap().to_string_lossy();
+            let slug = strip_date_prefix(&stem);
+            if let Some(article) = parse(&slug, &raw, &ss) {
+                articles.push(article);
+            }
+        }
+    }
+    // Newest first.
+    articles.sort_by(|a, b| b.fm.date.cmp(&a.fm.date));
+
+    for a in &articles {
+        let dir = articles_dir.join(&a.slug);
+        fs::create_dir_all(&dir).expect("create article dir");
+        fs::write(dir.join("index.html"), article_page(a)).expect("write article");
+    }
+
+    fs::write(articles_dir.join("index.html"), index_page("Notes & essays", None, &articles))
+        .expect("write index");
+
+    // Per-tag pages.
+    let mut tags: Vec<String> = articles.iter().flat_map(|a| a.fm.tags.clone()).collect();
+    tags.sort();
+    tags.dedup();
+    for tag in &tags {
+        let dir = articles_dir.join("tags").join(slug(tag));
+        fs::create_dir_all(&dir).expect("create tag dir");
+        let subset: Vec<&Article> = articles.iter().filter(|a| a.fm.tags.contains(tag)).collect();
+        fs::write(
+            dir.join("index.html"),
+            index_page(&format!("Tagged “{tag}”"), Some(tag), &subset_owned(&subset)),
+        )
+        .expect("write tag page");
+    }
+
+    fs::write(articles_dir.join("feed.xml"), atom_feed(&articles)).expect("write feed");
+    fs::write(out_root.join("sitemap.xml"), sitemap(&articles)).expect("write sitemap");
+
+    println!("blog: generated {} article(s), {} tag(s)", articles.len(), tags.len());
+}
+
+/// Split TOML front matter (`+++ ... +++`) from the Markdown body, render it.
+fn parse(slug: &str, raw: &str, ss: &SyntaxSet) -> Option<Article> {
+    let rest = raw.strip_prefix("+++")?;
+    let end = rest.find("+++")?;
+    let fm: FrontMatter = toml::from_str(rest[..end].trim()).expect("front matter");
+    if fm.draft {
+        return None;
+    }
+    let md = rest[end + 3..].trim_start();
+    let words = md.split_whitespace().count();
+    let minutes = (words / 200).max(1);
+    let (body, toc) = render(md, ss);
+    Some(Article { slug: slug.to_string(), fm, body, toc, minutes })
+}
+
+/// Render Markdown to HTML, highlighting code blocks and giving headings ids +
+/// a table of contents (h2/h3).
+fn render(md: &str, ss: &SyntaxSet) -> (String, Vec<Head>) {
+    let mut opts = Options::empty();
+    opts.insert(Options::ENABLE_STRIKETHROUGH);
+    opts.insert(Options::ENABLE_TABLES);
+    opts.insert(Options::ENABLE_FOOTNOTES);
+
+    let mut events: Vec<Event> = Vec::new();
+    let mut toc: Vec<Head> = Vec::new();
+    let mut code: Option<(String, String)> = None;
+    let mut heading: Option<(u8, String)> = None;
+
+    for event in Parser::new_ext(md, opts) {
+        if let Some((_, buf)) = heading.as_mut() {
+            match &event {
+                Event::Text(t) | Event::Code(t) => buf.push_str(t),
+                Event::End(TagEnd::Heading(_)) => {
+                    let (level, text) = heading.take().unwrap();
+                    let id = slug(&text);
+                    if (2..=3).contains(&level) {
+                        toc.push(Head { level, text: text.clone(), id: id.clone() });
+                    }
+                    events.push(Event::Html(
+                        format!("<h{level} id=\"{id}\">{}</h{level}>", esc(&text)).into(),
+                    ));
+                }
+                _ => {}
+            }
+            continue;
+        }
+        if let Some((_, buf)) = code.as_mut() {
+            match &event {
+                Event::Text(t) => buf.push_str(t),
+                Event::End(TagEnd::CodeBlock) => {
+                    let (lang, src) = code.take().unwrap();
+                    events.push(Event::Html(highlight(&lang, &src, ss).into()));
+                }
+                _ => {}
+            }
+            continue;
+        }
+        match event {
+            Event::Start(Tag::Heading { level, .. }) => heading = Some((hlevel(level), String::new())),
+            Event::Start(Tag::CodeBlock(kind)) => {
+                let lang = match kind {
+                    CodeBlockKind::Fenced(l) => l.to_string(),
+                    CodeBlockKind::Indented => String::new(),
+                };
+                code = Some((lang, String::new()));
+            }
+            ev => events.push(ev),
+        }
+    }
+
+    let mut html = String::new();
+    pulldown_cmark::html::push_html(&mut html, events.into_iter());
+    (html, toc)
+}
+
+fn highlight(lang: &str, source: &str, ss: &SyntaxSet) -> String {
+    let syntax = ss
+        .find_syntax_by_token(lang)
+        .or_else(|| ss.find_syntax_by_extension(lang))
+        .unwrap_or_else(|| ss.find_syntax_plain_text());
+    let mut gen = ClassedHTMLGenerator::new_with_class_style(syntax, ss, ClassStyle::Spaced);
+    for line in LinesWithEndings::from(source) {
+        // ponytail: skip a line that fails to tokenize rather than abort the build.
+        let _ = gen.parse_html_for_line_which_includes_newline(line);
+    }
+    let lang_attr = if lang.is_empty() {
+        String::new()
+    } else {
+        format!(" data-lang=\"{}\"", esc(lang))
+    };
+    format!("<pre class=\"code\"{lang_attr}><code>{}</code></pre>", gen.finalize())
+}
+
+fn hlevel(h: HeadingLevel) -> u8 {
+    match h {
+        HeadingLevel::H1 => 1,
+        HeadingLevel::H2 => 2,
+        HeadingLevel::H3 => 3,
+        HeadingLevel::H4 => 4,
+        HeadingLevel::H5 => 5,
+        HeadingLevel::H6 => 6,
+    }
+}
+
+// ---- templates ----
+
+const TOPBAR: &str =
+    "<header class=\"topbar\"><a class=\"brand\" href=\"/\">← FE / 26</a><a href=\"/articles/\">WRITING</a></header>";
+const FOOTER: &str =
+    "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
+
+fn shell(head: &str, body: &str) -> String {
+    format!(
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
+<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
+<meta name=\"theme-color\" content=\"#f2f0e9\">{head}\
+<link rel=\"stylesheet\" href=\"/articles/article.css\">\
+<link rel=\"alternate\" type=\"application/atom+xml\" href=\"/articles/feed.xml\" title=\"Fabio Ellena — Writing\">\
+</head><body>{TOPBAR}{body}{FOOTER}</body></html>"
+    )
+}
+
+fn article_page(a: &Article) -> String {
+    let url = a.url();
+    let desc = esc(&a.fm.description);
+    let title = esc(&a.fm.title);
+    let head = format!(
+        "<title>{title} — Fabio Ellena</title>\
+<meta name=\"description\" content=\"{desc}\">\
+<link rel=\"canonical\" href=\"{url}\">\
+<meta property=\"og:type\" content=\"article\">\
+<meta property=\"og:title\" content=\"{title}\">\
+<meta property=\"og:description\" content=\"{desc}\">\
+<meta property=\"og:url\" content=\"{url}\">\
+<meta name=\"twitter:card\" content=\"summary\">"
+    );
+    let tags: String = a
+        .fm
+        .tags
+        .iter()
+        .map(|t| format!("<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>", slug(t), esc(t)))
+        .collect();
+    let body = format!(
+        "<main><p class=\"eyebrow\">{date} · {min} min read</p>\
+<h1 class=\"title\">{title}</h1>\
+<div class=\"meta\">{tags}</div>{toc}<article>{body}</article></main>",
+        date = esc(&a.fm.date),
+        min = a.minutes,
+        toc = toc_html(&a.toc),
+        body = a.body,
+    );
+    shell(&head, &body)
+}
+
+fn toc_html(heads: &[Head]) -> String {
+    if heads.is_empty() {
+        return String::new();
+    }
+    let items: String = heads
+        .iter()
+        .map(|h| format!("<li class=\"lvl{}\"><a href=\"#{}\">{}</a></li>", h.level, h.id, esc(&h.text)))
+        .collect();
+    format!("<nav class=\"toc\"><p class=\"toc-title\">Contents</p><ul>{items}</ul></nav>")
+}
+
+fn index_page(title: &str, tag: Option<&str>, articles: &[Article]) -> String {
+    let etitle = esc(title);
+    let canonical = match tag {
+        Some(t) => format!("{BASE}/articles/tags/{}/", slug(t)),
+        None => format!("{BASE}/articles/"),
+    };
+    let head = format!(
+        "<title>{etitle} — Fabio Ellena</title>\
+<meta name=\"description\" content=\"Technical writing by Fabio Ellena.\">\
+<link rel=\"canonical\" href=\"{canonical}\">"
+    );
+    let items: String = articles
+        .iter()
+        .map(|a| {
+            let tags: String = a
+                .fm
+                .tags
+                .iter()
+                .map(|t| format!("<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>", slug(t), esc(t)))
+                .collect();
+            format!(
+                "<li class=\"post-item\"><a class=\"post-title\" href=\"/articles/{slug}/\">{title}</a>\
+<p>{desc}</p><div class=\"meta\"><span>{date}</span><span>{min} min</span>{tags}</div></li>",
+                slug = a.slug,
+                title = esc(&a.fm.title),
+                desc = esc(&a.fm.description),
+                date = esc(&a.fm.date),
+                min = a.minutes,
+            )
+        })
+        .collect();
+    let list = if articles.is_empty() {
+        "<p class=\"eyebrow\">Nothing published yet.</p>".to_string()
+    } else {
+        format!("<ul class=\"post-list\">{items}</ul>")
+    };
+    let body = format!(
+        "<main><p class=\"eyebrow\">Writing</p><h1 class=\"title\">{etitle}</h1>{list}</main>"
+    );
+    shell(&head, &body)
+}
+
+// index_page takes &[Article]; tag subsets are &[&Article], so clone-project.
+fn subset_owned(subset: &[&Article]) -> Vec<Article> {
+    subset
+        .iter()
+        .map(|a| Article {
+            slug: a.slug.clone(),
+            fm: FrontMatter {
+                title: a.fm.title.clone(),
+                date: a.fm.date.clone(),
+                description: a.fm.description.clone(),
+                tags: a.fm.tags.clone(),
+                draft: false,
+            },
+            body: String::new(),
+            toc: Vec::new(),
+            minutes: a.minutes,
+        })
+        .collect()
+}
+
+fn atom_feed(articles: &[Article]) -> String {
+    let updated = articles.first().map(|a| a.fm.date.as_str()).unwrap_or("1970-01-01");
+    let entries: String = articles
+        .iter()
+        .map(|a| {
+            format!(
+                "<entry><title>{title}</title><link href=\"{url}\"/><id>{url}</id>\
+<updated>{date}T00:00:00Z</updated><summary>{desc}</summary></entry>",
+                title = esc(&a.fm.title),
+                url = a.url(),
+                date = esc(&a.fm.date),
+                desc = esc(&a.fm.description),
+            )
+        })
+        .collect();
+    format!(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\
+<feed xmlns=\"http://www.w3.org/2005/Atom\">\
+<title>Fabio Ellena — Writing</title>\
+<link href=\"{BASE}/articles/feed.xml\" rel=\"self\"/>\
+<link href=\"{BASE}/articles/\"/>\
+<id>{BASE}/articles/</id>\
+<updated>{updated}T00:00:00Z</updated>\
+<author><name>{AUTHOR}</name></author>{entries}</feed>\n"
+    )
+}
+
+fn sitemap(articles: &[Article]) -> String {
+    let mut urls = format!("<url><loc>{BASE}/</loc></url><url><loc>{BASE}/articles/</loc></url>");
+    for a in articles {
+        urls.push_str(&format!("<url><loc>{}</loc></url>", a.url()));
+    }
+    format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">{urls}</urlset>\n"
+    )
+}
+
+// ---- small helpers ----
+
+fn esc(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// Drop a leading `YYYY-MM-DD-` from a filename so `2026-07-17-foo.md` becomes
+/// the URL slug `foo`.
+fn strip_date_prefix(stem: &str) -> String {
+    let b = stem.as_bytes();
+    let dated = b.len() > 11
+        && b[10] == b'-'
+        && b[..10]
+            .iter()
+            .enumerate()
+            .all(|(i, c)| if i == 4 || i == 7 { *c == b'-' } else { c.is_ascii_digit() });
+    if dated {
+        stem[11..].to_string()
+    } else {
+        stem.to_string()
+    }
+}
+
+fn slug(s: &str) -> String {
+    let mut out = String::new();
+    let mut dash = false;
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() {
+            out.push(c.to_ascii_lowercase());
+            dash = false;
+        } else if !dash && !out.is_empty() {
+            out.push('-');
+            dash = true;
+        }
+    }
+    out.trim_matches('-').to_string()
+}
