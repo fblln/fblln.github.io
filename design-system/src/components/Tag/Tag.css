@@ -1,0 +1,9 @@
+.ds-tag {
+  display: inline-block;
+  border: 1px solid currentColor;
+  padding: 0.25rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

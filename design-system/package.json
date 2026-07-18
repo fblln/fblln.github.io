@@ -1,0 +1,33 @@
+{
+  "name": "@fblln/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "React component library that mirrors fblln.github.io — Fabio Ellena's portfolio design language.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./styles.css": "./dist/index.css"
+  },
+  "files": ["dist"],
+  "sideEffects": ["*.css"],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build-storybook": "storybook build"
+  },
+  "peerDependencies": { "react": ">=18", "react-dom": ">=18" },
+  "devDependencies": {
+    "@storybook/react-vite": "^8.6.14",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "storybook": "^8.6.14",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+storybook-static/
+*.log
+
+# design-sync working artifacts (durable state under .design-sync/ IS committed)
+.design-sync/sb-reference/
+.design-sync/learnings/
+.design-sync/.cache/
+.design-sync/node_modules
+.ds-sync/
+ds-bundle/

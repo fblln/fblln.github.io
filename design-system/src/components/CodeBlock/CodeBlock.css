@@ -1,0 +1,16 @@
+.ds-code {
+  max-width: 41rem;
+  margin: 0;
+  background: var(--code-bg);
+  color: #c0c5ce;
+  border-radius: 6px;
+  padding: 1.1rem 1.2rem;
+  overflow-x: auto;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  -webkit-overflow-scrolling: touch;
+}
+.ds-code code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+}

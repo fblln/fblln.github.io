@@ -1,0 +1,23 @@
+.ds-metric {
+  display: flex;
+  align-items: end;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--ink);
+  border-top: 1px solid var(--line-invert);
+  border-bottom: 1px solid var(--line-invert);
+  font-family: var(--font-sans);
+}
+.ds-metric strong {
+  color: var(--signal);
+  font-size: clamp(3.2rem, 10vw, 7rem);
+  line-height: 0.8;
+  letter-spacing: -0.07em;
+}
+.ds-metric span {
+  max-width: 15ch;
+  color: var(--muted-invert);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}

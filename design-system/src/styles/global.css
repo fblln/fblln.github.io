@@ -1,0 +1,11 @@
+/* Base reset shared by every component. Tokens are imported ahead of this by
+   styles.css. Kept intentionally light so the library composes into any page. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+::selection {
+  background: var(--signal);
+  color: var(--paper);
+}

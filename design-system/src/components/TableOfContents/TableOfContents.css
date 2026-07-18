@@ -1,0 +1,35 @@
+.ds-toc {
+  max-width: 41rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  font-family: var(--font-reading);
+  font-size: 0.92rem;
+}
+.ds-toc__title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ds-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ds-toc li {
+  margin: 0.3rem 0;
+}
+.ds-toc__l3 {
+  padding-left: 1rem;
+}
+.ds-toc a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.ds-toc a:hover {
+  color: var(--signal);
+}

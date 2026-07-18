@@ -1,0 +1,82 @@
+.ds-prose {
+  max-width: 41rem;
+  color: var(--ink);
+  font-family: var(--font-reading);
+  font-size: 1.15rem;
+  line-height: 1.72;
+}
+.ds-prose h2,
+.ds-prose h3 {
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.ds-prose h2 {
+  margin: 2.6rem 0 0.9rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.ds-prose h3 {
+  margin: 2.2rem 0 0.8rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.ds-prose p {
+  margin: 0 0 1.3rem;
+}
+.ds-prose ul,
+.ds-prose ol {
+  margin: 0 0 1.3rem;
+  padding-left: 1.4rem;
+}
+.ds-prose li {
+  margin: 0.35rem 0;
+}
+.ds-prose a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-soft);
+  text-underline-offset: 2px;
+}
+.ds-prose a:hover {
+  color: var(--signal);
+  text-decoration-color: var(--signal);
+}
+.ds-prose :not(pre) > code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.86em;
+  background: rgba(10, 10, 10, 0.06);
+  padding: 0.12em 0.38em;
+  border-radius: 3px;
+}
+.ds-prose blockquote {
+  margin: 2rem 0;
+  padding: 0.4rem 0 0.4rem 1.3rem;
+  border-left: 3px solid var(--signal);
+  color: var(--muted);
+  font-style: italic;
+}
+.ds-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  display: block;
+  margin: 2rem auto;
+}
+.ds-prose hr {
+  border: none;
+  border-top: 1px solid var(--line-soft);
+  margin: 3rem 0;
+}
+.ds-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.8rem 0;
+  font-size: 0.92rem;
+}
+.ds-prose th,
+.ds-prose td {
+  border: 1px solid var(--line-soft);
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+}
