@@ -355,7 +355,7 @@ fn App(boot_time: f64, wasm_size: String) -> impl IntoView {
                                         <span class="project-number">{format!("{:02}", index + 1)}</span>
                                         <span class="project-name">{project.name}</span>
                                         <span class="project-stack">{project.stack}</span>
-                                        <span class="project-arrow">"↗"</span>
+                                        <span class="project-arrow">"VIEW"</span>
                                     </button>
                                     <div class="project-summary">
                                         <p>{project.statement}</p>
