@@ -1,0 +1,46 @@
+.ds-topbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 var(--pad);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 93%, transparent);
+  backdrop-filter: blur(14px);
+  font-family: var(--font-sans);
+}
+.ds-wordmark {
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  text-decoration: none;
+  color: var(--ink);
+}
+.ds-nav {
+  display: flex;
+  justify-content: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+.ds-nav a {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.ds-nav a:hover {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.ds-topbar__action {
+  justify-self: end;
+}
+@media (max-width: 680px) {
+  .ds-topbar {
+    grid-template-columns: 1fr auto;
+  }
+  .ds-nav {
+    display: none;
+  }
+}

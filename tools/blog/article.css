@@ -1,0 +1,78 @@
+/* Calm reading theme for articles. Shares the site's color tokens but swaps the
+   brutalist display type for a comfortable long-form reading setup. The syntect
+   code-block token colors are appended to this file by the generator. */
+:root {
+  --ink: #0a0a0a;
+  --paper: #f2f0e9;
+  --signal: #ff3b00;
+  --line: rgba(10, 10, 10, 0.18);
+  --muted: #65635e;
+  --code-bg: #2b303b;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 1.15rem/1.72 Charter, "Iowan Old Style", Georgia, Cambria, "Times New Roman", serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; text-decoration-color: var(--line); }
+a:hover { color: var(--signal); text-decoration-color: var(--signal); }
+::selection { background: var(--signal); color: var(--paper); }
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: 1rem clamp(1rem, 4vw, 2rem); border-bottom: 1px solid var(--line);
+  font: 700 0.74rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.topbar a { text-decoration: none; }
+.topbar .brand:hover { color: var(--signal); }
+
+main { max-width: 41rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4.5rem) clamp(1rem, 4vw, 2rem) 5rem; }
+
+.eyebrow { font: 700 0.72rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem; }
+h1.title { font-family: "Helvetica Neue", Arial, sans-serif; font-weight: 800; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.04; letter-spacing: -0.02em; margin: 0 0 1rem; }
+.meta { font: 0.8rem/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); letter-spacing: 0.04em; margin: 0 0 2.5rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+.meta .tag { text-decoration: none; border: 1px solid var(--line); padding: 0.22rem 0.5rem; border-radius: 2px; }
+.meta .tag:hover { border-color: var(--signal); color: var(--signal); }
+
+article h2, article h3 { font-family: "Helvetica Neue", Arial, sans-serif; letter-spacing: -0.01em; line-height: 1.2; margin: 2.6rem 0 0.9rem; }
+article h2 { font-size: 1.6rem; font-weight: 800; }
+article h3 { font-size: 1.25rem; font-weight: 700; }
+article p { margin: 0 0 1.3rem; }
+article ul, article ol { margin: 0 0 1.3rem; padding-left: 1.4rem; }
+article li { margin: 0.35rem 0; }
+article img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin: 2rem auto; }
+article blockquote { margin: 2rem 0; padding: 0.4rem 0 0.4rem 1.3rem; border-left: 3px solid var(--signal); color: var(--muted); font-style: italic; }
+article hr { border: none; border-top: 1px solid var(--line); margin: 3rem 0; }
+
+article :not(pre) > code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.86em; background: rgba(10, 10, 10, 0.06); padding: 0.12em 0.38em; border-radius: 3px; }
+pre.code { background: var(--code-bg); color: #c0c5ce; border-radius: 6px; padding: 1.1rem 1.2rem; overflow-x: auto; margin: 1.8rem 0; font-size: 0.86rem; line-height: 1.6; -webkit-overflow-scrolling: touch; }
+pre.code code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: none; padding: 0; font-size: inherit; }
+
+article table { border-collapse: collapse; width: 100%; margin: 1.8rem 0; font-size: 0.92rem; }
+article th, article td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; text-align: left; }
+
+.toc { border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2.5rem; font-size: 0.92rem; }
+.toc-title { font: 700 0.7rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc li { margin: 0.3rem 0; }
+.toc li.lvl3 { padding-left: 1rem; }
+.toc a { text-decoration: none; color: var(--ink); }
+.toc a:hover { color: var(--signal); }
+:target { scroll-margin-top: 1.5rem; }
+
+.post-list { list-style: none; margin: 0; padding: 0; }
+.post-item { padding: 1.6rem 0; border-top: 1px solid var(--line); }
+.post-item:last-child { border-bottom: 1px solid var(--line); }
+.post-item a.post-title { font-family: "Helvetica Neue", Arial, sans-serif; font-weight: 800; font-size: 1.4rem; text-decoration: none; letter-spacing: -0.01em; display: inline-block; margin-bottom: 0.4rem; }
+.post-item a.post-title:hover { color: var(--signal); }
+.post-item p { margin: 0.3rem 0 0.6rem; color: #3a3a38; }
+
+footer.site { border-top: 1px solid var(--line); padding: 1.5rem clamp(1rem, 4vw, 2rem); font: 0.72rem/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+footer.site a { text-decoration: none; }
+
+/* ---- syntect code-block token colors appended below ---- */

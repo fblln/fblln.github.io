@@ -1,0 +1,10 @@
+.ds-callout {
+  max-width: 41rem;
+  margin: 0;
+  padding: 0.4rem 0 0.4rem 1.3rem;
+  border-left: 3px solid var(--signal);
+  color: var(--muted);
+  font-family: var(--font-reading);
+  font-style: italic;
+  line-height: 1.6;
+}

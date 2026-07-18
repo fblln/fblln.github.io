@@ -1,0 +1,15 @@
+{
+  "projectId": "002a3cde-92b5-44fa-a61e-e202a0accf99",
+  "pkg": "@fblln/design-system",
+  "shape": "storybook",
+  "storybookStatic": ".design-sync/sb-reference",
+  "storybookConfigDir": ".storybook",
+  "buildCmd": "npm run build",
+  "cssEntry": "dist/index.css",
+  "titleMap": { "Tokens": null },
+  "overrides": {
+    "ImpactStat": { "cardMode": "column" },
+    "ProjectRow": { "cardMode": "column" }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

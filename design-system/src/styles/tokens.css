@@ -1,0 +1,26 @@
+/* Design tokens — the exact palette, type, and spacing of fblln.github.io.
+   Components read these via var(--*). Change a value here and it flows through
+   the whole system. */
+:root {
+  color-scheme: light;
+
+  /* Color */
+  --ink: #0a0a0a; /* primary text / dark surfaces */
+  --paper: #f2f0e9; /* page background */
+  --signal: #ff3b00; /* accent — links, active, emphasis */
+  --line: rgba(10, 10, 10, 0.22); /* hairline borders on paper */
+  --line-soft: rgba(10, 10, 10, 0.18);
+  --line-invert: rgba(242, 240, 233, 0.25); /* hairlines on ink surfaces */
+  --muted: #65635e; /* secondary text on paper */
+  --muted-invert: rgba(242, 240, 233, 0.65); /* secondary text on ink */
+  --ok: #149447; /* healthy status dot */
+  --code-bg: #2b303b; /* code block background (base16-ocean.dark) */
+
+  /* Type */
+  --font-sans: Arial, Helvetica, sans-serif; /* UI + display */
+  --font-mono: "Courier New", ui-monospace, "SF Mono", Menlo, monospace; /* labels, meta */
+  --font-reading: Charter, "Iowan Old Style", Georgia, Cambria, "Times New Roman", serif; /* long-form body */
+
+  /* Spacing */
+  --pad: clamp(1rem, 3vw, 2.5rem);
+}

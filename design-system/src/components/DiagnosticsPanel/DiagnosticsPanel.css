@@ -1,0 +1,28 @@
+.ds-diagnostics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-sans);
+}
+.ds-diagnostics > div {
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+  min-height: 130px;
+  padding: 1.25rem;
+  border-right: 1px solid var(--line-invert);
+  border-bottom: 1px solid var(--line-invert);
+}
+.ds-diagnostics span {
+  color: rgba(242, 240, 233, 0.55);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ds-diagnostics strong {
+  color: var(--signal);
+  font-size: 1.05rem;
+  word-break: break-word;
+}

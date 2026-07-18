@@ -1,0 +1,35 @@
+.ds-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border: 1px solid var(--ink);
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+.ds-button:hover {
+  background: var(--signal);
+  color: var(--paper);
+  border-color: var(--signal);
+}
+.ds-button--solid {
+  background: var(--ink);
+  color: var(--paper);
+}
+.ds-button--solid:hover {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+.ds-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

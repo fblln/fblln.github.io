@@ -1,0 +1,21 @@
+.ds-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.25rem var(--pad);
+  background: var(--ink);
+  color: var(--muted-invert);
+  border-top: 1px solid var(--line-invert);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+}
+.ds-footer a {
+  color: inherit;
+  text-underline-offset: 4px;
+}
+@media (max-width: 680px) {
+  .ds-footer {
+    flex-direction: column;
+  }
+}
