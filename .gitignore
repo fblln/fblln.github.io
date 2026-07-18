@@ -1,4 +1,4 @@
 /dist/
 target/
 .DS_Store
-
+.playwright-mcp/

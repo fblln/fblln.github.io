@@ -185,6 +185,15 @@ fn render(md: &str, ss: &SyntaxSet) -> (String, Vec<Head>) {
                 };
                 code = Some((lang, String::new()));
             }
+            // Wrap tables so wide ones scroll on narrow screens instead of cramping.
+            Event::Start(Tag::Table(a)) => {
+                events.push(Event::Html("<div class=\"table-wrap\">".into()));
+                events.push(Event::Start(Tag::Table(a)));
+            }
+            Event::End(TagEnd::Table) => {
+                events.push(Event::End(TagEnd::Table));
+                events.push(Event::Html("</div>".into()));
+            }
             ev => events.push(ev),
         }
     }
@@ -264,7 +273,7 @@ fn article_page(a: &Article) -> String {
     let body = format!(
         "<main><p class=\"eyebrow\">{date} · {min} min read</p>\
 <h1 class=\"title\">{title}</h1>\
-<div class=\"meta\">{tags}</div>{toc}<article>{body}</article></main>",
+<div class=\"post-meta\">{tags}</div>{toc}<article>{body}</article></main>",
         date = esc(&a.fm.date),
         min = a.minutes,
         toc = toc_html(&a.toc),
@@ -306,7 +315,7 @@ fn index_page(title: &str, tag: Option<&str>, articles: &[Article]) -> String {
                 .collect();
             format!(
                 "<li class=\"post-item\"><a class=\"post-title\" href=\"/articles/{slug}/\">{title}</a>\
-<p>{desc}</p><div class=\"meta\"><span>{date}</span><span>{min} min</span>{tags}</div></li>",
+<p>{desc}</p><div class=\"post-meta\"><span>{date}</span><span>{min} min</span>{tags}</div></li>",
                 slug = a.slug,
                 title = esc(&a.fm.title),
                 desc = esc(&a.fm.description),
