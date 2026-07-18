@@ -92,15 +92,14 @@ button { color: inherit; }
 .hero-content { display: grid; align-content: start; gap: clamp(1.5rem, 4.5vh, 3rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
 .hero h1 { max-width: 15ch; margin: 0; font-size: clamp(3.2rem, 10.7vw, 10rem); font-weight: 900; line-height: 0.82; letter-spacing: -0.045em; text-transform: uppercase; }
 .hero h1 em { color: var(--signal); font-style: normal; }
-.runtime-facts { display: flex; flex-wrap: wrap; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
-.runtime-facts span { padding: 0.65rem 0.8rem; border-right: 1px solid var(--line); font-family: var(--font-mono); font-size: clamp(0.59rem, 0.8vw, 0.7rem); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
-.runtime-facts span:first-child, .runtime-facts span:nth-child(4) { background: var(--ink); color: var(--paper); }
-.runtime-facts span:nth-child(2) { background: var(--signal); }
+.runtime-facts { display: flex; flex-wrap: wrap; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.runtime-facts span { padding: 0.55rem 0.8rem; border-right: 1px solid var(--line); color: var(--muted); font-family: var(--font-mono); font-size: clamp(0.59rem, 0.8vw, 0.7rem); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.runtime-facts span:nth-child(2) { color: var(--ink); }
 .hero-bottom { display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(260px, 1.2fr); gap: 2rem; align-items: end; border-top: 1px solid var(--line); padding-top: var(--pad); }
 .hero-bottom > p { max-width: 52ch; margin: 0; font-size: clamp(1rem, 1.7vw, 1.35rem); line-height: 1.35; }
 .hero-actions { display: flex; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; border: 1px solid var(--ink); padding: 0.75rem 1rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.07em; text-decoration: none; text-transform: uppercase; transition: 140ms ease; }
-.button:hover { background: var(--signal); color: var(--paper); border-color: var(--signal); }
+.button:hover { background: var(--signal); color: var(--ink); border-color: var(--signal); }
 .button-solid { background: var(--ink); color: var(--paper); }
 
 /* Keyboard focus made visible (site has strong J/K/Enter nav; mouse-hover states
@@ -130,22 +129,23 @@ button { color: inherit; }
 .category-list button { border: 1px solid var(--line); padding: 0.55rem 0.75rem; background: transparent; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; cursor: pointer; }
 .category-list button.active, .category-list button:hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
 .search-box { display: flex; align-items: center; min-width: min(100%, 300px); border-bottom: 1px solid var(--ink); font-family: var(--font-mono); }
-.search-box span { color: var(--signal); font-weight: 700; }
+.search-box span { color: var(--signal); font-weight: 700; font-size: 1.2rem; }
 .search-box input { width: 100%; border: 0; outline: 0; padding: 0.65rem; background: transparent; font-family: inherit; font-size: 0.72rem; }
 .project-list { border-top: 2px solid var(--ink); }
 .project-row { border-bottom: 1px solid var(--line); transition: opacity 160ms ease; }
 .project-row.hidden { display: none; }
 .project-row.active { background: var(--ink); color: var(--paper); }
-.project-open { display: grid; grid-template-columns: 60px minmax(180px, 1fr) minmax(220px, 0.8fr) 30px; gap: 1rem; align-items: center; width: 100%; border: 0; padding: 1.4rem 1rem; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-.project-number, .project-stack { font-family: var(--font-mono); font-size: 0.67rem; letter-spacing: 0.06em; }
+.project-open { display: grid; grid-template-columns: 60px minmax(180px, 1fr) minmax(220px, 0.8fr) 56px; gap: 1rem; align-items: center; width: 100%; border: 0; padding: clamp(1.6rem, 3vw, 2.4rem) 1rem; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.project-number, .project-stack, .project-arrow { font-family: var(--font-mono); font-size: 0.67rem; letter-spacing: 0.06em; }
 .project-name { font-size: clamp(1.4rem, 3vw, 2.6rem); font-weight: 800; letter-spacing: -0.045em; }
-.project-arrow { justify-self: end; font-size: 1.4rem; }
-.project-summary { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; padding: 0 1rem 1.4rem 76px; }
+.project-arrow { justify-self: end; font-weight: 700; }
+.project-summary { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; padding: 0 1rem clamp(1.6rem, 3vw, 2.4rem) 76px; }
 .project-summary p { max-width: 62ch; margin: 0; color: var(--muted); line-height: 1.4; }
 .project-row.active .project-summary p { color: color-mix(in srgb, var(--paper) 72%, transparent); }
 .tag-list { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; }
 .tag-list span { border: 1px solid currentColor; padding: 0.25rem 0.4rem; font-family: var(--font-mono); font-size: 0.58rem; text-transform: uppercase; }
-.keyboard-hint { margin: 1rem 0 0; color: var(--muted); font-family: var(--font-mono); font-size: 0.62rem; }
+.keyboard-hint { margin: 1rem 0 0; color: var(--muted); font-family: var(--font-mono); font-size: 0.62rem; opacity: 0; transition: opacity 160ms ease; }
+.project-list:hover + .keyboard-hint, .project-list:focus-within + .keyboard-hint { opacity: 1; }
 
 .principles { background: var(--ink); color: var(--paper); }
 .principles .section-index { border-color: rgba(242,240,233,0.25); }
@@ -238,8 +238,9 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
   .hero-actions { justify-content: flex-start; }
   .impact-cell { min-height: 150px; }
   .project-controls { align-items: stretch; flex-direction: column; }
+  .category-list button { min-height: 44px; padding: 0.75rem 0.9rem; }
   .search-box { min-width: 100%; }
-  .project-open { grid-template-columns: 36px 1fr 24px; gap: 0.5rem; }
+  .project-open { grid-template-columns: 36px 1fr 44px; gap: 0.5rem; }
   .project-stack { grid-column: 2; }
   .project-arrow { grid-column: 3; grid-row: 1 / span 2; }
   .project-summary { grid-template-columns: 1fr; padding-left: 53px; }
