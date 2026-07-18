@@ -21,7 +21,7 @@ command = "sh"
 command_arguments = ["tools/minify.sh"]
 
 [watch]
-watch = ["src", "styles.css", "index.html", "assets", "content", "tools/blog/article.css"]
+watch = ["src", "styles.css", "index.html", "assets", "content", "tools/blog/src", "tools/blog/article.css"]
 ignore = ["dist"]
 
 [serve]

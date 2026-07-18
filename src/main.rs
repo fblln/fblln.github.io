@@ -59,7 +59,7 @@ const PROJECTS: [Project; 4] = [
         evidence: "A real asset pipeline for DEM sampling, projected geometry, terrain textures, route replay, and 7200×5400 export.",
         detail: "Ridgeline combines a high-performance geospatial pipeline with a browser-native viewer. Instead of hiding the work, it exposes each stage: GPX parsing, DEM acquisition, sampling, relief, slope, forest layers, and final asset handoff.",
         metric: "6.7×",
-        metric_label: "Rust rastering speedup",
+        metric_label: "warm-cache compute speedup",
         image: "/assets/ridgeline.webp",
         image_alt: "Ridgeline 3D terrain visualization",
         repo: "https://github.com/fblln/ridgeline",
