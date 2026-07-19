@@ -22,6 +22,11 @@
     <meta name="twitter:image:alt" content="Fabio Ellena" />
     <title>Fabio Ellena — Senior Staff Software Engineer</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 fill=%22%230a0a0a%22/><path d=%22M14 12h36v8H23v9h22v8H23v15h-9z%22 fill=%22white%22/></svg>" />
+    <!-- A prior successful boot means the wasm is cached; mark this load "warm" so
+         styles.css hides the boot screen before first paint — no dark flash on refresh. -->
+    <script>
+      try { if (localStorage.getItem('fe:booted')) document.documentElement.setAttribute('data-warm', ''); } catch (e) {}
+    </script>
     <!-- Current rustc enables bulk-memory & friends by default for wasm32; trunk's
          bundled wasm-opt needs them explicitly enabled or the release build fails. -->
     <link data-trunk rel="rust"

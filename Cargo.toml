@@ -11,15 +11,21 @@ js-sys = "0.3"
 leptos = { version = "0.8", features = ["csr"] }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
+    "Clipboard",
+    "CssStyleDeclaration",
     "Document",
     "Element",
     "EventTarget",
     "HtmlElement",
     "HtmlInputElement",
     "KeyboardEvent",
+    "Location",
     "Navigator",
+    "Node",
+    "NodeList",
     "Performance",
     "PerformanceResourceTiming",
+    "Storage",
     "Window",
 ] }
 

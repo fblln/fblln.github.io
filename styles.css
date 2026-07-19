@@ -50,6 +50,9 @@ button { color: inherit; }
    hand-off reads as a reveal, not a dark→light snap. pointer-events off so the
    fading overlay never eats a click on the interactive page beneath it. */
 .boot-hide { opacity: 0; pointer-events: none; }
+/* Warm loads (wasm already cached) never show the boot screen — hidden pre-paint
+   by the inline head script that sets data-warm, so there's no dark flash. */
+html[data-warm] .boot { display: none; }
 .boot h1 { margin: 0; font-size: clamp(1.3rem, 5vw, 4rem); }
 .boot-line { width: min(76vw, 540px); height: 4px; background: var(--signal); animation: boot 1.1s ease-in-out infinite alternate; }
 @keyframes boot { from { transform: scaleX(0.15); transform-origin: left; } to { transform: scaleX(1); transform-origin: left; } }
