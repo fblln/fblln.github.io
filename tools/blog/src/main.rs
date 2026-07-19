@@ -6,7 +6,7 @@
 //! (an explicit arg overrides it for manual runs). Code blocks are highlighted
 //! at build time with syntect — no client-side JS.
 
-use std::{env, fs, path::PathBuf};
+use std::{env, fs, path::PathBuf, sync::OnceLock};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use serde::Deserialize;
@@ -18,6 +18,11 @@ use syntect::util::LinesWithEndings;
 const BASE: &str = "https://fblln.github.io";
 const AUTHOR: &str = "Fabio Ellena";
 const READING_CSS: &str = include_str!("../article.css");
+
+/// `<script>` that loads the site's wasm bundle to enhance article pages (copy
+/// buttons, reading-progress bar). Empty when no bundle is present — e.g. a manual
+/// generator run outside a Trunk build — so pages just stay static.
+static ENHANCE_SCRIPT: OnceLock<String> = OnceLock::new();
 
 #[derive(Deserialize)]
 struct FrontMatter {
@@ -60,6 +65,18 @@ fn main() {
     let articles_dir = out_root.join("articles");
     fs::create_dir_all(&articles_dir).expect("create articles dir");
 
+    // Trunk emits the wasm loader as `<name>-<hash>.js` at the dist root; find it so
+    // article pages can pull the same bundle in to enhance themselves.
+    // wasm-bindgen's loader defaults to the *unhashed* `<crate>_bg.wasm`; Trunk
+    // renames the wasm with a content hash, so pass the real path to init().
+    let script = find_bundle(&out_root)
+        .map(|js| {
+            let wasm = js.replace(".js", "_bg.wasm");
+            format!("<script type=\"module\">import init from \"/{js}\";init({{module_or_path:\"/{wasm}\"}})</script>")
+        })
+        .unwrap_or_default();
+    let _ = ENHANCE_SCRIPT.set(script);
+
     let ss = SyntaxSet::load_defaults_newlines();
     let ts = ThemeSet::load_defaults();
     let code_css = css_for_theme_with_class_style(&ts.themes["base16-ocean.dark"], ClassStyle::Spaced)
@@ -89,10 +106,13 @@ fn main() {
     // Newest first.
     articles.sort_by(|a, b| b.fm.date.cmp(&a.fm.date));
 
-    for a in &articles {
+    for (i, a) in articles.iter().enumerate() {
         let dir = articles_dir.join(&a.slug);
         fs::create_dir_all(&dir).expect("create article dir");
-        fs::write(dir.join("index.html"), article_page(a)).expect("write article");
+        // Articles are newest-first, so the previous index is the newer post.
+        let newer = i.checked_sub(1).map(|j| &articles[j]);
+        let older = articles.get(i + 1);
+        fs::write(dir.join("index.html"), article_page(a, newer, older)).expect("write article");
     }
 
     fs::write(articles_dir.join("index.html"), index_page("Notes & essays", None, &articles))
@@ -117,6 +137,15 @@ fn main() {
     fs::write(out_root.join("sitemap.xml"), sitemap(&articles)).expect("write sitemap");
 
     println!("blog: generated {} article(s), {} tag(s)", articles.len(), tags.len());
+}
+
+/// Locate Trunk's wasm loader JS at the dist root (`index-<hash>.js`, i.e. a
+/// top-level `.js` that isn't the `_bg` wasm shim), returning its file name.
+fn find_bundle(dist: &std::path::Path) -> Option<String> {
+    fs::read_dir(dist).ok()?.filter_map(|e| e.ok()).find_map(|entry| {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        (name.ends_with(".js") && !name.ends_with("_bg.js")).then_some(name)
+    })
 }
 
 /// Split TOML front matter (`+++ ... +++`) from the Markdown body, render it.
@@ -158,7 +187,11 @@ fn render(md: &str, ss: &SyntaxSet) -> (String, Vec<Head>) {
                         toc.push(Head { level, text: text.clone(), id: id.clone() });
                     }
                     events.push(Event::Html(
-                        format!("<h{level} id=\"{id}\">{}</h{level}>", esc(&text)).into(),
+                        format!(
+                            "<h{level} id=\"{id}\"><a class=\"anchor\" href=\"#{id}\" aria-hidden=\"true\">#</a>{}</h{level}>",
+                            esc(&text)
+                        )
+                        .into(),
                     ));
                 }
                 _ => {}
@@ -213,12 +246,14 @@ fn highlight(lang: &str, source: &str, ss: &SyntaxSet) -> String {
         // ponytail: skip a line that fails to tokenize rather than abort the build.
         let _ = gen.parse_html_for_line_which_includes_newline(line);
     }
-    let lang_attr = if lang.is_empty() {
-        String::new()
+    let code = gen.finalize();
+    if lang.is_empty() {
+        format!("<pre class=\"code\"><code>{code}</code></pre>")
     } else {
-        format!(" data-lang=\"{}\"", esc(lang))
-    };
-    format!("<pre class=\"code\"{lang_attr}><code>{}</code></pre>", gen.finalize())
+        // Fenced blocks with a language get a header bar showing the language.
+        let l = esc(lang);
+        format!("<figure class=\"codeblock\"><figcaption>{l}</figcaption><pre class=\"code\" data-lang=\"{l}\"><code>{code}</code></pre></figure>")
+    }
 }
 
 fn hlevel(h: HeadingLevel) -> u8 {
@@ -240,17 +275,19 @@ const FOOTER: &str =
     "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
 
 fn shell(head: &str, body: &str) -> String {
+    let enhance = ENHANCE_SCRIPT.get().map(String::as_str).unwrap_or("");
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
 <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
-<meta name=\"theme-color\" content=\"#f2f0e9\">{head}\
+<meta name=\"theme-color\" content=\"#f2f0e9\">\
+<link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 fill=%22%230a0a0a%22/><path d=%22M14 12h36v8H23v9h22v8H23v15h-9z%22 fill=%22white%22/></svg>\">{head}\
 <link rel=\"stylesheet\" href=\"/articles/article.css\">\
 <link rel=\"alternate\" type=\"application/atom+xml\" href=\"/articles/feed.xml\" title=\"Fabio Ellena — Writing\">\
-</head><body>{TOPBAR}{body}{FOOTER}</body></html>"
+</head><body>{TOPBAR}{body}{FOOTER}{enhance}</body></html>"
     )
 }
 
-fn article_page(a: &Article) -> String {
+fn article_page(a: &Article, newer: Option<&Article>, older: Option<&Article>) -> String {
     let url = a.url();
     let desc = esc(&a.fm.description);
     let title = esc(&a.fm.title);
@@ -273,13 +310,34 @@ fn article_page(a: &Article) -> String {
     let body = format!(
         "<main><p class=\"eyebrow\">{date} · {min} min read</p>\
 <h1 class=\"title\">{title}</h1>\
-<div class=\"post-meta\">{tags}</div>{toc}<article>{body}</article></main>",
+<div class=\"post-meta\">{tags}</div>{toc}<article>{body}</article>{nav}</main>",
         date = esc(&a.fm.date),
         min = a.minutes,
         toc = toc_html(&a.toc),
         body = a.body,
+        nav = post_nav(newer, older),
     );
     shell(&head, &body)
+}
+
+/// Bottom-of-article links to the chronologically adjacent posts.
+fn post_nav(newer: Option<&Article>, older: Option<&Article>) -> String {
+    if newer.is_none() && older.is_none() {
+        return String::new();
+    }
+    let link = |a: &Article, class: &str, label: &str| {
+        format!(
+            "<a class=\"{class}\" href=\"/articles/{slug}/\"><span class=\"pn-dir\">{label}</span>\
+<span class=\"pn-title\">{title}</span></a>",
+            slug = a.slug,
+            title = esc(&a.fm.title),
+        )
+    };
+    format!(
+        "<nav class=\"post-nav\">{}{}</nav>",
+        older.map(|o| link(o, "older", "← Older")).unwrap_or_default(),
+        newer.map(|n| link(n, "newer", "Newer →")).unwrap_or_default(),
+    )
 }
 
 fn toc_html(heads: &[Head]) -> String {

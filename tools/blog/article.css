@@ -1,6 +1,13 @@
 /* Calm reading theme for articles. Shares the site's color tokens but swaps the
    brutalist display type for a comfortable long-form reading setup. The syntect
    code-block token colors are appended to this file by the generator. */
+@font-face {
+  font-family: "Monaspace Neon";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url(/assets/fonts/monaspace-neon-400.woff2) format("woff2");
+}
 :root {
   --ink: #0a0a0a;
   --paper: #f2f0e9;
@@ -8,6 +15,8 @@
   --line: rgba(10, 10, 10, 0.18);
   --muted: #65635e;
   --code-bg: #2b303b;
+  /* Monaspace Neon: coding ligatures + "texture healing" (via the calt feature). */
+  --code-font: "Monaspace Neon", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -31,7 +40,7 @@ a:hover { color: var(--signal); text-decoration-color: var(--signal); }
 .topbar a { text-decoration: none; }
 .topbar .brand:hover { color: var(--signal); }
 
-main { max-width: 48rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4.5rem) clamp(1rem, 4vw, 2rem) 5rem; }
+main { max-width: 50rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4.5rem) clamp(1rem, 4vw, 2rem) 5rem; }
 
 .eyebrow { font: 700 0.72rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0 0 1rem; }
 h1.title { font-family: "Helvetica Neue", Arial, sans-serif; font-weight: 800; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.04; letter-spacing: -0.02em; margin: 0 0 1rem; }
@@ -41,7 +50,10 @@ h1.title { font-family: "Helvetica Neue", Arial, sans-serif; font-weight: 800; f
 .post-meta .tag { text-decoration: none; border: 1px solid var(--line); padding: 0.22rem 0.5rem; border-radius: 2px; }
 .post-meta .tag:hover { border-color: var(--signal); color: var(--signal); }
 
-article h2, article h3 { font-family: "Helvetica Neue", Arial, sans-serif; letter-spacing: -0.01em; line-height: 1.2; margin: 2.6rem 0 0.9rem; }
+article h2, article h3 { position: relative; font-family: "Helvetica Neue", Arial, sans-serif; letter-spacing: -0.01em; line-height: 1.2; margin: 2.6rem 0 0.9rem; }
+article h2 .anchor, article h3 .anchor { position: absolute; left: -1.15rem; text-decoration: none; color: var(--line); opacity: 0; transition: opacity 0.12s; }
+article h2:hover .anchor, article h3:hover .anchor, article .anchor:focus { opacity: 1; color: var(--signal); }
+@media (max-width: 34rem) { article .anchor { display: none; } }
 article h2 { font-size: 1.6rem; font-weight: 800; }
 article h3 { font-size: 1.25rem; font-weight: 700; }
 article p { margin: 0 0 1.3rem; }
@@ -51,12 +63,37 @@ article img { max-width: 100%; height: auto; border-radius: 4px; display: block;
 article blockquote { margin: 2rem 0; padding: 0.4rem 0 0.4rem 1.3rem; border-left: 3px solid var(--signal); color: var(--muted); font-style: italic; }
 article hr { border: none; border-top: 1px solid var(--line); margin: 3rem 0; }
 
-article :not(pre) > code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.86em; background: rgba(10, 10, 10, 0.06); padding: 0.12em 0.38em; border-radius: 3px; }
-pre.code { background: var(--code-bg); color: #c0c5ce; border-radius: 6px; padding: 1.1rem 1.2rem; overflow-x: auto; margin: 1.8rem 0; font-size: 0.86rem; line-height: 1.6; -webkit-overflow-scrolling: touch; }
-pre.code code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: none; padding: 0; font-size: inherit; }
+article :not(pre) > code { font-family: var(--code-font); font-feature-settings: "calt" 1, "liga" 1; font-size: 0.86em; background: rgba(10, 10, 10, 0.06); padding: 0.12em 0.38em; border-radius: 3px; }
+pre.code { background: var(--code-bg); color: #c0c5ce; border-radius: 6px; padding: 1.1rem 1.2rem; overflow-x: auto; margin: 1.8rem 0; font-size: 0.86rem; line-height: 1.6; tab-size: 4; -webkit-overflow-scrolling: touch; }
+/* Monaspace's texture healing (calt) + ligatures (liga); grayscale smoothing keeps
+   the thin strokes crisp on macOS instead of fattening them. */
+pre.code code { font-family: var(--code-font); font-feature-settings: "calt" 1, "liga" 1; font-variant-ligatures: contextual; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; background: none; padding: 0; font-size: inherit; }
 /* Lift the comment token to WCAG AA on the dark code bg (theme default #65737e is ~2.7:1);
    these articles carry real explanation in comments. Specificity beats the appended .comment rule. */
 pre.code .comment, pre.code .punctuation.definition.comment { color: #94a1ae; }
+
+/* Language-label header bar. Only fenced blocks with a language get wrapped in a
+   <figure> + <figcaption>; plain blocks stay bare with full corners and margin. */
+figure.codeblock { margin: 1.8rem 0; }
+figure.codeblock figcaption {
+  display: flex; justify-content: space-between; align-items: center;
+  font: 700 0.7rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #94a1ae; background: #232833; padding: 0.5rem 0.7rem 0.5rem 1.2rem; border-radius: 6px 6px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+figure.codeblock pre.code { margin: 0; border-radius: 0 0 6px 6px; }
+/* Copy button, injected by the wasm enhancer; absent (and unmissed) without JS. */
+figure.codeblock figcaption .copy {
+  font: inherit; color: #94a1ae; background: transparent; border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px; padding: 0.2rem 0.55rem; cursor: pointer; transition: color 0.12s, border-color 0.12s;
+}
+figure.codeblock figcaption .copy:hover { color: #e6e9ee; border-color: rgba(255, 255, 255, 0.4); }
+
+/* Reading-progress bar, also injected by the enhancer. */
+.reading-progress {
+  position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--signal);
+  z-index: 100; transition: width 0.08s linear;
+}
 
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.8rem 0; }
 article table { border-collapse: collapse; width: 100%; margin: 0; font-size: 0.92rem; }
@@ -70,6 +107,13 @@ article th, article td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; 
 .toc a { text-decoration: none; color: var(--ink); }
 .toc a:hover { color: var(--signal); }
 :target { scroll-margin-top: 1.5rem; }
+
+.post-nav { display: flex; justify-content: space-between; gap: 1.5rem; margin: 3.5rem 0 0; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+.post-nav a { text-decoration: none; max-width: 46%; }
+.post-nav .newer { margin-left: auto; text-align: right; }
+.post-nav .pn-dir { display: block; font: 700 0.7rem/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+.post-nav .pn-title { font-family: "Helvetica Neue", Arial, sans-serif; font-weight: 700; line-height: 1.25; }
+.post-nav a:hover .pn-title { color: var(--signal); }
 
 .post-list { list-style: none; margin: 0; padding: 0; }
 .post-item { padding: 1.6rem 0; border-top: 1px solid var(--line); }

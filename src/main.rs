@@ -1,3 +1,5 @@
+mod articles;
+
 use leptos::prelude::*;
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{HtmlElement, HtmlInputElement, KeyboardEvent};
@@ -167,6 +169,15 @@ fn project_matches(project: Project, category: &str, query: &str) -> bool {
 
 fn main() {
     console_error_panic_hook::set_once();
+    // Article pages under /articles/ are static HTML that reuse this bundle only to
+    // progressively enhance code blocks and add a reading-progress bar. The
+    // portfolio app must not mount there.
+    // ponytail: reuses the main bundle rather than standing up a second wasm build;
+    // split into a dedicated enhancer crate only if article payload becomes a concern.
+    if articles::is_article_page() {
+        articles::enhance();
+        return;
+    }
     // `performance.now()` here includes document loading, the Trunk loader, and
     // WebAssembly instantiation. It is intentionally captured before the UI mounts.
     let boot_time = now_ms();
@@ -178,32 +189,59 @@ fn main() {
     leptos::mount::mount_to_body(move || {
         view! { <App boot_time=boot_time wasm_size=wasm_size.clone() /> }
     });
-    dismiss_boot_overlay();
+    reveal_site(boot_time);
 }
 
-// Reveal the mounted site by fading the boot overlay out instead of snapping it
-// away. `.boot-hide` transitions opacity to 0 over the dark screen; once faded we
-// drop the node from the DOM so it leaves no stray full-screen layer (and no
-// duplicate <main>/landmark for assistive tech). The timed removal is the
-// backstop: under `prefers-reduced-motion` the CSS transition is ~instant and no
-// `transitionend` we could rely on fires, so we always clean up on a fixed delay
-// slightly longer than the fade.
-fn dismiss_boot_overlay() {
+/// The boot screen shows for at least this long on a cold load so the Rust-runtime
+/// boot reads as a real moment rather than a sub-frame flicker.
+const BOOT_MIN_MS: f64 = 1100.0;
+
+// Hand off from the boot screen to the mounted site.
+//
+// Warm load (we've booted before, so the wasm is cached): the inline head script
+// already set `data-warm`, hiding the boot screen before first paint — there was
+// never a dark frame to reveal, so we just drop the (already-hidden) node.
+//
+// Cold load (first visit): hold the boot screen for `BOOT_MIN_MS` so it reads as a
+// real Rust-runtime boot, then fade it out over the freshly-mounted light site.
+// `.boot-hide` transitions opacity to 0; the timed removal is the backstop, since
+// under `prefers-reduced-motion` the transition is ~instant and no `transitionend`
+// fires. We also remember the boot so the *next* load can take the warm path.
+fn reveal_site(elapsed_ms: f64) {
     let Some(window) = web_sys::window() else {
         return;
     };
-    let Some(boot) = window
-        .document()
-        .and_then(|document| document.get_element_by_id("boot"))
-    else {
+    let document = window.document();
+    // Record that we've booted; the next load reads this pre-paint to skip the screen.
+    if let Ok(Some(storage)) = window.local_storage() {
+        let _ = storage.set_item("fe:booted", "1");
+    }
+    let warm = document
+        .as_ref()
+        .and_then(|d| d.document_element())
+        .is_some_and(|el| el.has_attribute("data-warm"));
+    let Some(boot) = document.and_then(|d| d.get_element_by_id("boot")) else {
         return;
     };
-    let _ = boot.set_attribute("class", "boot boot-hide");
-    // `once_into_js` hands ownership to the JS runtime, so the closure outlives
-    // this function and is freed after it fires — no manual `forget`/leak.
-    let remove = Closure::once_into_js(move || boot.remove());
-    let _ =
-        window.set_timeout_with_callback_and_timeout_and_arguments_0(remove.unchecked_ref(), 460);
+    if warm {
+        boot.remove();
+        return;
+    }
+    // `once_into_js` hands ownership to the JS runtime, so each closure outlives this
+    // function and is freed after it fires — no manual `forget`/leak.
+    let fade = Closure::once_into_js(move || {
+        let _ = boot.set_attribute("class", "boot boot-hide");
+        let remove = Closure::once_into_js(move || boot.remove());
+        if let Some(window) = web_sys::window() {
+            let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                remove.unchecked_ref(),
+                460,
+            );
+        }
+    });
+    let hold = (BOOT_MIN_MS - elapsed_ms).max(0.0) as i32;
+    let _ = window
+        .set_timeout_with_callback_and_timeout_and_arguments_0(fade.unchecked_ref(), hold);
 }
 
 #[component]
