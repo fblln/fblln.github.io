@@ -6,7 +6,7 @@
 
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
-use web_sys::{Document, Element, HtmlElement, Window};
+use web_sys::{Document, Element, HtmlElement, KeyboardEvent, Window};
 
 /// True when the current page is under `/articles/` — the signal `main()` uses to
 /// enhance instead of mounting the portfolio app.
@@ -20,7 +20,81 @@ pub fn enhance() {
     let Some(win) = web_sys::window() else { return };
     let Some(doc) = win.document() else { return };
     add_copy_buttons(&doc);
+    add_runtime_panel(&doc);
     add_progress_bar(&win, &doc);
+}
+
+/// The article shell is static, but it loads this WASM bundle for progressive
+/// enhancement. Give its runtime status control the same useful diagnostics
+/// affordance as the main app rather than presenting a button-shaped dead end.
+fn add_runtime_panel(doc: &Document) {
+    let Ok(Some(trigger)) = doc.query_selector(".runtime-button") else {
+        return;
+    };
+    let Ok(panel) = doc.create_element("aside") else {
+        return;
+    };
+    let _ = panel.set_attribute("id", "system-panel");
+    let _ = panel.set_attribute("class", "system-panel");
+    let _ = panel.set_attribute("hidden", "");
+    let _ = panel.set_attribute("aria-label", "Runtime diagnostics");
+    panel.set_inner_html(
+        "<div class=\"panel-head\"><span>SYSTEM/DIAGNOSTICS</span><button id=\"system-close\" type=\"button\">CLOSE [ESC]</button></div>\
+<div class=\"diagnostic-grid\"><div><span>APPLICATION</span><strong>STATIC HTML + WASM</strong></div>\
+<div><span>TARGET</span><strong>WASM32-UNKNOWN-UNKNOWN</strong></div>\
+<div><span>RENDERER</span><strong>DOM + STATIC HTML</strong></div>\
+<div><span>ENHANCEMENTS</span><strong>CODE COPY · READING PROGRESS</strong></div></div>\
+<p>The writing surface is pre-rendered for fast, resilient reading. This Rust/WebAssembly bundle adds the interactive details after the page is available.</p>",
+    );
+    let Some(body) = doc.body() else { return };
+    let _ = body.append_child(&panel);
+
+    let panel_for_open = panel.clone();
+    let trigger_for_open = trigger.clone();
+    let open = Closure::<dyn FnMut()>::new(move || {
+        let is_open = !panel_for_open.has_attribute("hidden");
+        if is_open {
+            let _ = panel_for_open.set_attribute("hidden", "");
+            let _ = trigger_for_open.set_attribute("class", "runtime-button");
+            let _ = trigger_for_open.set_attribute("aria-expanded", "false");
+        } else {
+            let _ = panel_for_open.remove_attribute("hidden");
+            let _ = panel_for_open.set_attribute("class", "system-panel open");
+            let _ = trigger_for_open.set_attribute("class", "runtime-button active");
+            let _ = trigger_for_open.set_attribute("aria-expanded", "true");
+        }
+    });
+    let _ = trigger.add_event_listener_with_callback("click", open.as_ref().unchecked_ref());
+    open.forget();
+
+    let Ok(Some(close)) = panel.query_selector("#system-close") else {
+        return;
+    };
+    let panel_for_close = panel.clone();
+    let trigger_for_close = trigger.clone();
+    let close_panel = Closure::<dyn FnMut()>::new(move || {
+        let _ = panel_for_close.set_attribute("hidden", "");
+        let _ = trigger_for_close.set_attribute("class", "runtime-button");
+        let _ = trigger_for_close.set_attribute("aria-expanded", "false");
+    });
+    let _ = close.add_event_listener_with_callback("click", close_panel.as_ref().unchecked_ref());
+    close_panel.forget();
+
+    // Keep the shared panel's keyboard model consistent with the portfolio app:
+    // Escape is the fast, predictable exit even when focus is inside diagnostics.
+    let panel_for_escape = panel.clone();
+    let trigger_for_escape = trigger.clone();
+    let escape = Closure::<dyn FnMut(KeyboardEvent)>::new(move |event: KeyboardEvent| {
+        if event.key() == "Escape" && !panel_for_escape.has_attribute("hidden") {
+            let _ = panel_for_escape.set_attribute("hidden", "");
+            let _ = trigger_for_escape.set_attribute("class", "runtime-button");
+            let _ = trigger_for_escape.set_attribute("aria-expanded", "false");
+        }
+    });
+    if let Some(window) = web_sys::window() {
+        let _ = window.add_event_listener_with_callback("keydown", escape.as_ref().unchecked_ref());
+        escape.forget();
+    }
 }
 
 /// Drop a "Copy" button into each code block's language header.

@@ -53,14 +53,27 @@ a:hover { color: var(--signal); text-decoration-color: var(--signal); }
 .topbar nav { display: flex; gap: clamp(1rem, 3vw, 2.5rem); }
 .topbar nav a { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .topbar nav a:hover { text-decoration: underline; text-underline-offset: 5px; color: var(--ink); }
-.runtime-button { justify-self: end; display: inline-flex; align-items: center; gap: 0.55rem; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; transition: color 140ms ease; }
+.runtime-button { justify-self: end; display: inline-flex; align-items: center; gap: 0.55rem; border: 0; padding: 0; background: transparent; color: inherit; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; cursor: pointer; transition: color 140ms ease; }
 /* Keep the static Writing header's runtime signal visually in step with home. */
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #149447; animation: status-pulse 1.8s ease-out infinite; }
 @keyframes status-pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(20, 148, 71, 0); } }
 .runtime-button:hover { color: var(--signal); }
 .runtime-button:hover .status-dot { background: var(--signal); }
+.runtime-button.active .status-dot { background: var(--signal); }
 @media (prefers-reduced-motion: reduce) { .status-dot { animation: none; box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); } }
 .mobile-nav { display: none; }
+
+/* Static Writing pages borrow the main app's diagnostics panel only after WASM
+   has loaded. Until then the markup remains a clean, fully readable document. */
+.system-panel { position: fixed; z-index: 40; top: 0; right: 0; width: min(640px, 100%); height: 100dvh; overflow-y: auto; background: var(--ink); color: var(--paper); transform: translateX(102%); transition: transform 260ms cubic-bezier(.2,.8,.2,1); box-shadow: -20px 0 50px rgba(0,0,0,0.25); }
+.system-panel.open { transform: translateX(0); }
+.panel-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid rgba(242,240,233,0.25); background: var(--ink); font-family: var(--font-mono); font-size: 0.68rem; }
+.panel-head button { border: 0; padding: 0; background: transparent; color: var(--paper); font-family: inherit; cursor: pointer; }
+.system-panel > p { padding: 1.5rem; color: rgba(242,240,233,0.65); line-height: 1.5; }
+.diagnostic-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.diagnostic-grid div { display: grid; gap: 0.8rem; min-height: 130px; padding: 1.25rem; border-right: 1px solid rgba(242,240,233,0.2); border-bottom: 1px solid rgba(242,240,233,0.2); }
+.diagnostic-grid span { color: rgba(242,240,233,0.55); font-family: var(--font-mono); font-size: 0.62rem; }
+.diagnostic-grid strong { color: var(--signal); font-size: 1.05rem; word-break: break-word; }
 @media (max-width: 680px) {
   .topbar { grid-template-columns: 1fr auto auto; gap: 0.75rem; }
   .topbar > nav { display: none; }

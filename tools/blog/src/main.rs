@@ -318,7 +318,7 @@ const TOPBAR: &str = "<header class=\"topbar\">\
 <a href=\"/#contact\">Contact</a>\
 <a href=\"/articles/\">Writing</a>\
 </nav>\
-<span class=\"runtime-button\"><span class=\"status-dot\"></span>WASM/ACTIVE</span>\
+<button class=\"runtime-button\" type=\"button\" aria-controls=\"system-panel\" aria-expanded=\"false\"><span class=\"status-dot\"></span>WASM/ACTIVE</button>\
 <details class=\"mobile-nav\"><summary aria-label=\"Toggle navigation menu\">MENU</summary>\
 <nav aria-label=\"Primary navigation\">\
 <a href=\"/#work\">Work</a>\
