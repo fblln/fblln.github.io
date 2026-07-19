@@ -1,300 +1,23 @@
 #[cfg(target_arch = "wasm32")]
 mod articles;
+#[cfg(target_arch = "wasm32")]
+mod boot;
 #[path = "../shared/navigation.rs"]
 mod navigation;
+mod projects;
+mod runtime;
 
 use leptos::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{JsCast, closure::Closure};
 #[cfg(target_arch = "wasm32")]
-use web_sys::{HtmlElement, HtmlInputElement, KeyboardEvent};
+use web_sys::{HtmlInputElement, KeyboardEvent};
 
-#[derive(Clone, Copy)]
-struct Project {
-    slug: &'static str,
-    name: &'static str,
-    category: &'static str,
-    stack: &'static str,
-    statement: &'static str,
-    evidence: &'static str,
-    detail: &'static str,
-    metric: &'static str,
-    metric_label: &'static str,
-    image: &'static str,
-    image_alt: &'static str,
-    repo: &'static str,
-    tags: &'static [&'static str],
-}
-
-const PROJECTS: [Project; 4] = [
-    Project {
-        slug: "race-telemetry",
-        name: "Race Telemetry Workbench",
-        category: "Telemetry",
-        stack: ".NET · TIMESCALEDB · MCP · AI",
-        statement: "Turn raw Formula 1 telemetry into engineering and race-strategy insight.",
-        evidence: "A local-first analysis platform with replay, strategy, race control, head-to-head comparison, and an MCP-backed AI surface.",
-        detail: "FastF1 data is imported into TimescaleDB and exposed through typed .NET query primitives. The same bounded contracts power an engineering desktop and autonomous analysis through MCP—keeping natural-language answers grounded in real session data.",
-        metric: "42.7×",
-        metric_label: "raw telemetry compression",
-        image: "/assets/race-telemetry.webp",
-        image_alt: "Race Telemetry Workbench replay interface",
-        repo: "https://github.com/fblln/race-telemetry-workbench",
-        tags: &["F1", "PostgreSQL", "OpenTelemetry", "Agents"],
-    },
-    Project {
-        slug: "lithograph",
-        name: "Lithograph",
-        category: "Code Intelligence",
-        stack: "RUST · TREE-SITTER · LADYBUGDB · MCP",
-        statement: "Turn a source tree into a queryable, evidence-backed architecture graph.",
-        evidence: "29 typed relations, 25 MCP tools, hybrid language resolution, drift detection, ADRs, and offline-first architecture documentation.",
-        detail: "Lithograph treats repository understanding as a deterministic systems problem rather than a prompt. It combines syntax extraction, typed graph construction, search, architecture analysis, evidence tracking, incremental regeneration, and optional model augmentation.",
-        metric: "29",
-        metric_label: "typed relation kinds",
-        image: "",
-        image_alt: "",
-        repo: "https://github.com/fblln/Lithograph",
-        tags: &["Rust", "Graphs", "Local-first", "Code Intelligence"],
-    },
-    Project {
-        slug: "ridgeline",
-        name: "Ridgeline",
-        category: "Geospatial",
-        stack: "RUST · WASM · GDAL · THREE.JS",
-        statement: "Transform a GPX route and elevation data into an interactive terrain artifact.",
-        evidence: "A real asset pipeline for DEM sampling, projected geometry, terrain textures, route replay, and 7200×5400 export.",
-        detail: "Ridgeline combines a high-performance geospatial pipeline with a browser-native viewer. Instead of hiding the work, it exposes each stage: GPX parsing, DEM acquisition, sampling, relief, slope, forest layers, and final asset handoff.",
-        metric: "6.7×",
-        metric_label: "warm-cache compute speedup",
-        image: "/assets/ridgeline.webp",
-        image_alt: "Ridgeline 3D terrain visualization",
-        repo: "https://github.com/fblln/ridgeline",
-        tags: &["Rust", "WASM", "Terrain", "GPX"],
-    },
-    Project {
-        slug: "apexline",
-        name: "Apexline",
-        category: "Research",
-        stack: "PYTHON · FASTF1 · GEOMETRY · POLYLINES",
-        statement: "Prove whether a telemetry lap has the same shape as an oracle circuit.",
-        evidence: "26,689 race laps inspected across 24 circuits with auditable recovery, rejection, fitting, and compact polyline output.",
-        detail: "Apexline normalizes lap-boundary overlap, rejects invalid evidence, fits closed paths without arbitrary warping, and reports residuals that explain whether each lap is useful, recoverable, suspicious, or invalid.",
-        metric: "93.7%",
-        metric_label: "2025 laps classified good",
-        image: "/assets/apexline.svg",
-        image_alt: "Apexline Canadian Grand Prix geometry diagnostics",
-        repo: "https://github.com/fblln/apexline",
-        tags: &["Geometry", "F1", "Validation", "Compression"],
-    },
-];
-
-const CATEGORIES: [&str; 5] = [
-    "All",
-    "Telemetry",
-    "Code Intelligence",
-    "Geospatial",
-    "Research",
-];
-
-// Fallback shown only if the browser exposes no Resource Timing entry for the
-// WASM (very old browsers). Normal path reports the real bytes this client got.
-const PRODUCTION_WASM_SIZE: &str = "80 KiB";
-
-// The actual compressed bytes the browser downloaded for the WASM module, read
-// from the Resource Timing API. `encoded_body_size` is the on-the-wire body
-// (gzip on GitHub Pages); it stays non-zero on cache hits, unlike `transfer_size`.
-#[cfg(target_arch = "wasm32")]
-fn wasm_transfer_size() -> Option<String> {
-    let entries = web_sys::window()?
-        .performance()?
-        .get_entries_by_type("resource");
-    entries
-        .iter()
-        .filter_map(|entry| entry.dyn_into::<web_sys::PerformanceResourceTiming>().ok())
-        .find(|res| res.name().ends_with(".wasm"))
-        .map(|res| res.encoded_body_size())
-        .filter(|&bytes| bytes > 0.0)
-        .map(human_bytes)
-}
-
-// Scales to KiB or MiB so the debug build (~3.7 MiB) doesn't read as "3800 KiB".
-#[cfg(any(target_arch = "wasm32", test))]
-fn human_bytes(bytes: f64) -> String {
-    if bytes >= 1024.0 * 1024.0 {
-        format!("{:.1} MiB", bytes / (1024.0 * 1024.0))
-    } else {
-        format!("{:.0} KiB", bytes / 1024.0)
-    }
-}
+use projects::{CATEGORIES, PROJECTS};
+use runtime::PRODUCTION_WASM_SIZE;
 
 #[cfg(target_arch = "wasm32")]
-fn now_ms() -> f64 {
-    web_sys::window()
-        .and_then(|window| window.performance())
-        .map(|performance| performance.now())
-        .unwrap_or_default()
-}
-
-#[cfg(target_arch = "wasm32")]
-fn browser_engine() -> String {
-    let agent = web_sys::window()
-        .and_then(|window| window.navigator().user_agent().ok())
-        .unwrap_or_else(|| "unknown".into());
-    if agent.contains("Firefox") {
-        "Gecko".into()
-    } else if agent.contains("Chrome") || agent.contains("Chromium") {
-        "Blink".into()
-    } else if agent.contains("Safari") {
-        "WebKit".into()
-    } else {
-        "Browser VM".into()
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn focus_element(id: &str) {
-    if let Some(element) = web_sys::window()
-        .and_then(|window| window.document())
-        .and_then(|document| document.get_element_by_id(id))
-        .and_then(|element| element.dyn_into::<HtmlElement>().ok())
-    {
-        let _ = element.focus();
-    }
-}
-
-fn project_matches(project: Project, category: &str, query: &str) -> bool {
-    let category_match = category == "All" || project.category == category;
-    let query = query.trim().to_ascii_lowercase();
-    let query_match = query.is_empty()
-        || project.name.to_ascii_lowercase().contains(&query)
-        || project.statement.to_ascii_lowercase().contains(&query)
-        || project.stack.to_ascii_lowercase().contains(&query)
-        || project
-            .tags
-            .iter()
-            .any(|tag| tag.to_ascii_lowercase().contains(&query));
-    category_match && query_match
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn run() {
-    console_error_panic_hook::set_once();
-    // Article pages under /articles/ are static HTML that reuse this bundle only to
-    // progressively enhance code blocks and add a reading-progress bar. The
-    // portfolio app must not mount there.
-    // ponytail: reuses the main bundle rather than standing up a second wasm build;
-    // split into a dedicated enhancer crate only if article payload becomes a concern.
-    if articles::is_article_page() {
-        articles::enhance();
-        return;
-    }
-    // `performance.now()` here includes document loading, the Trunk loader, and
-    // WebAssembly instantiation. It is intentionally captured before the UI mounts.
-    let boot_time = now_ms();
-    // Mount the app *before* dismissing the boot overlay so the site paints
-    // underneath the still-opaque dark boot screen, then fade the overlay away.
-    // Removing the overlay in the same frame the app mounts cut hard from the
-    // dark boot to the light site — a visible dark→light flash on load.
-    #[cfg(feature = "hydrate")]
-    if let Some(app_root) = web_sys::window()
-        .and_then(|window| window.document())
-        .and_then(|document| document.get_element_by_id("app"))
-        .and_then(|element| element.dyn_into::<HtmlElement>().ok())
-    {
-        leptos::mount::hydrate_from(app_root, || view! { <App /> }).forget();
-    } else {
-        leptos::mount::mount_to_body(|| view! { <App /> });
-    }
-    #[cfg(not(feature = "hydrate"))]
-    leptos::mount::mount_to_body(|| view! { <App /> });
-    scroll_to_initial_fragment();
-    reveal_site(boot_time);
-}
-
-/// Browsers resolve `/#experience` while the portfolio's mount point is still
-/// empty, so the native anchor jump is missed. Retry once after Leptos has added
-/// the sections, keeping links from the static Writing surface deep-linkable.
-#[cfg(target_arch = "wasm32")]
-fn scroll_to_initial_fragment() {
-    let Some(window) = web_sys::window() else {
-        return;
-    };
-    let Some(id) = window
-        .location()
-        .hash()
-        .ok()
-        .and_then(|hash| fragment_id(&hash).map(str::to_owned))
-    else {
-        return;
-    };
-    if let Some(target) = window
-        .document()
-        .and_then(|document| document.get_element_by_id(&id))
-    {
-        target.scroll_into_view();
-    }
-}
-
-/// Turns the browser's optional leading-hash value into a DOM id. Keeping this
-/// tiny normalization separate makes the cross-surface deep-link contract testable.
-#[cfg(any(target_arch = "wasm32", test))]
-fn fragment_id(hash: &str) -> Option<&str> {
-    hash.strip_prefix('#').filter(|id| !id.is_empty())
-}
-
-/// The boot screen shows for at least this long on a cold load so the Rust-runtime
-/// boot reads as a real moment rather than a sub-frame flicker.
-#[cfg(target_arch = "wasm32")]
-const BOOT_MIN_MS: f64 = 1100.0;
-
-// Hand off from the boot screen to the mounted site.
-//
-// Warm load (we've booted before, so the wasm is cached): the inline head script
-// already set `data-warm`, hiding the boot screen before first paint — there was
-// never a dark frame to reveal, so we just drop the (already-hidden) node.
-//
-// Cold load (first visit): hold the boot screen for `BOOT_MIN_MS` so it reads as a
-// real Rust-runtime boot, then fade it out over the freshly-mounted light site.
-// `.boot-hide` transitions opacity to 0; the timed removal is the backstop, since
-// under `prefers-reduced-motion` the transition is ~instant and no `transitionend`
-// fires. We also remember the boot so the *next* load can take the warm path.
-#[cfg(target_arch = "wasm32")]
-fn reveal_site(elapsed_ms: f64) {
-    let Some(window) = web_sys::window() else {
-        return;
-    };
-    let document = window.document();
-    // Record that we've booted; the next load reads this pre-paint to skip the screen.
-    if let Ok(Some(storage)) = window.local_storage() {
-        let _ = storage.set_item("fe:booted", "1");
-    }
-    let warm = document
-        .as_ref()
-        .and_then(|d| d.document_element())
-        .is_some_and(|el| el.has_attribute("data-warm"));
-    let Some(boot) = document.and_then(|d| d.get_element_by_id("boot")) else {
-        return;
-    };
-    if warm {
-        boot.remove();
-        return;
-    }
-    // `once_into_js` hands ownership to the JS runtime, so each closure outlives this
-    // function and is freed after it fires — no manual `forget`/leak.
-    let fade = Closure::once_into_js(move || {
-        let _ = boot.set_attribute("class", "boot boot-hide");
-        let remove = Closure::once_into_js(move || boot.remove());
-        if let Some(window) = web_sys::window() {
-            let _ = window
-                .set_timeout_with_callback_and_timeout_and_arguments_0(remove.unchecked_ref(), 460);
-        }
-    });
-    let hold = (BOOT_MIN_MS - elapsed_ms).max(0.0) as i32;
-    let _ =
-        window.set_timeout_with_callback_and_timeout_and_arguments_0(fade.unchecked_ref(), hold);
-}
-
+pub use boot::run;
 #[component]
 fn PrimaryNav() -> impl IntoView {
     /* Desktop and mobile navigation intentionally render from the same fixed
@@ -326,21 +49,22 @@ pub fn App() -> impl IntoView {
 
     #[cfg(target_arch = "wasm32")]
     Effect::new(move |_| {
-        boot_time.set(format!("{:.1} ms", now_ms()));
-        wasm_size.set(wasm_transfer_size().unwrap_or_else(|| PRODUCTION_WASM_SIZE.to_string()));
-        engine.set(browser_engine());
+        boot_time.set(format!("{:.1} ms", runtime::now_ms()));
+        wasm_size
+            .set(runtime::wasm_transfer_size().unwrap_or_else(|| PRODUCTION_WASM_SIZE.to_string()));
+        engine.set(runtime::browser_engine());
     });
 
     #[cfg(target_arch = "wasm32")]
     {
         Effect::new(move |_| {
             if system_open.get() {
-                focus_element("system-close");
+                runtime::focus_element("system-close");
             }
         });
         Effect::new(move |_| {
             if expanded.get().is_some() {
-                focus_element("case-close");
+                runtime::focus_element("case-close");
             }
         });
 
@@ -471,7 +195,7 @@ pub fn App() -> impl IntoView {
                                 <article
                                     class="project-row"
                                     class:active=move || active.get() == index
-                                    class:hidden=move || !project_matches(project, &category.get(), &query.get())
+                                    class:hidden=move || !projects::matches(project, &category.get(), &query.get())
                                     id=project.slug
                                 >
                                     <button
@@ -677,51 +401,8 @@ pub fn render_static_app() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn project_slugs_are_unique() {
-        for (index, project) in PROJECTS.iter().enumerate() {
-            assert!(
-                PROJECTS
-                    .iter()
-                    .skip(index + 1)
-                    .all(|other| other.slug != project.slug)
-            );
-        }
-    }
-
-    #[test]
-    fn every_project_has_evidence_and_a_repository() {
-        for project in PROJECTS {
-            assert!(!project.evidence.is_empty());
-            assert!(project.repo.starts_with("https://github.com/fblln/"));
-        }
-    }
-
-    #[test]
-    fn filtering_covers_category_stack_and_tags() {
-        assert!(project_matches(
-            PROJECTS[1],
-            "Code Intelligence",
-            "tree-sitter"
-        ));
-        assert!(project_matches(PROJECTS[2], "All", "wasm"));
-        assert!(!project_matches(PROJECTS[0], "Research", "telemetry"));
-    }
-
-    #[test]
-    fn fragment_ids_keep_only_non_empty_hash_targets() {
-        assert_eq!(fragment_id("#experience"), Some("experience"));
-        assert_eq!(fragment_id("#"), None);
-        assert_eq!(fragment_id("experience"), None);
-    }
-
-    #[test]
-    fn byte_sizes_cross_the_binary_unit_boundary() {
-        assert_eq!(human_bytes(512.0 * 1024.0), "512 KiB");
-        assert_eq!(human_bytes(1.5 * 1024.0 * 1024.0), "1.5 MiB");
-    }
+    #[cfg(feature = "ssr")]
+    use super::render_static_app;
 
     #[cfg(feature = "ssr")]
     #[test]

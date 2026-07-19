@@ -145,7 +145,7 @@ fn main() {
             index_page(
                 &format!("Tagged “{tag}”"),
                 Some(tag),
-                &subset_owned(&subset),
+                subset,
             ),
         )
         .expect("write tag page");
@@ -368,17 +368,7 @@ fn article_page(a: &Article, newer: Option<&Article>, older: Option<&Article>) -
 <meta property=\"og:url\" content=\"{url}\">\
 <meta name=\"twitter:card\" content=\"summary\">"
     );
-    let tags: String =
-        a.fm.tags
-            .iter()
-            .map(|t| {
-                format!(
-                    "<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>",
-                    slug(t),
-                    esc(t)
-                )
-            })
-            .collect();
+    let tags = render_tags(&a.fm.tags);
     let body = format!(
         "<main><p class=\"eyebrow\">{date} · {min} min read</p>\
 <h1 class=\"title\">{title}</h1>\
@@ -434,7 +424,11 @@ fn toc_html(heads: &[Head]) -> String {
     format!("<nav class=\"toc\"><p class=\"toc-title\">Contents</p><ul>{items}</ul></nav>")
 }
 
-fn index_page(title: &str, tag: Option<&str>, articles: &[Article]) -> String {
+/// Accept references so tag pages reuse the published articles instead of
+/// cloning their complete rendered bodies just to render a filtered index.
+fn index_page<'a>(title: &str, tag: Option<&str>, articles: impl IntoIterator<Item = &'a Article>) -> String {
+    let articles: Vec<&Article> = articles.into_iter().collect();
+    let is_empty = articles.is_empty();
     let etitle = esc(title);
     let canonical = match tag {
         Some(t) => format!("{BASE}/articles/tags/{}/", slug(t)),
@@ -446,14 +440,9 @@ fn index_page(title: &str, tag: Option<&str>, articles: &[Article]) -> String {
 <link rel=\"canonical\" href=\"{canonical}\">"
     );
     let items: String = articles
-        .iter()
+        .into_iter()
         .map(|a| {
-            let tags: String = a
-                .fm
-                .tags
-                .iter()
-                .map(|t| format!("<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>", slug(t), esc(t)))
-                .collect();
+            let tags = render_tags(&a.fm.tags);
             format!(
                 "<li class=\"post-item\"><a class=\"post-title\" href=\"/articles/{slug}/\">{title}</a>\
 <p>{desc}</p><div class=\"post-meta\"><span>{date}</span><span>{min} min</span>{tags}</div></li>",
@@ -465,7 +454,7 @@ fn index_page(title: &str, tag: Option<&str>, articles: &[Article]) -> String {
             )
         })
         .collect();
-    let list = if articles.is_empty() {
+    let list = if is_empty {
         "<p class=\"eyebrow\">Nothing published yet.</p>".to_string()
     } else {
         format!("<ul class=\"post-list\">{items}</ul>")
@@ -476,23 +465,11 @@ fn index_page(title: &str, tag: Option<&str>, articles: &[Article]) -> String {
     shell(&head, &body)
 }
 
-// index_page takes &[Article]; tag subsets are &[&Article], so clone-project.
-fn subset_owned(subset: &[&Article]) -> Vec<Article> {
-    subset
-        .iter()
-        .map(|a| Article {
-            slug: a.slug.clone(),
-            fm: FrontMatter {
-                title: a.fm.title.clone(),
-                date: a.fm.date.clone(),
-                description: a.fm.description.clone(),
-                tags: a.fm.tags.clone(),
-                draft: false,
-            },
-            body: String::new(),
-            toc: Vec::new(),
-            minutes: a.minutes,
-        })
+/// Renders topic links consistently on article detail and listing pages. Both
+/// the URL segment and visible text are normalized or escaped at this boundary.
+fn render_tags(tags: &[String]) -> String {
+    tags.iter()
+        .map(|tag| format!("<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>", slug(tag), esc(tag)))
         .collect()
 }
 
@@ -583,7 +560,7 @@ fn slug(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{article_css, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS};
+    use super::{article_css, render_tags, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS};
 
     /// Static pages live below `/articles/`, so leaving fragment-only links in
     /// either desktop or mobile navigation would scroll the wrong document.
@@ -612,5 +589,15 @@ mod tests {
         assert_eq!(typography, 0);
         assert!(typography < header);
         assert!(header < syntax);
+    }
+
+    #[test]
+    fn tag_markup_normalizes_routes_and_escapes_labels() {
+        let html = render_tags(&["Rust & WASM".to_string()]);
+
+        assert_eq!(
+            html,
+            "<a class=\"tag\" href=\"/articles/tags/rust-wasm/\">Rust &amp; WASM</a>"
+        );
     }
 }
