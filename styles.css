@@ -73,6 +73,7 @@ html[data-warm] .boot { display: none; }
   backdrop-filter: blur(14px);
 }
 .wordmark { font-size: 1.1rem; font-weight: 900; text-decoration: none; letter-spacing: -0.05em; }
+.wordmark:hover { color: var(--signal); }
 .topbar nav { display: flex; gap: clamp(1rem, 3vw, 2.5rem); }
 .topbar nav a { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
 .topbar nav a:hover { text-decoration: underline; text-underline-offset: 5px; }
@@ -89,9 +90,20 @@ html[data-warm] .boot { display: none; }
   font-size: 0.68rem;
   font-weight: 700;
   cursor: pointer;
+  transition: color 140ms ease;
 }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #149447; box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); }
-.runtime-button.active .status-dot { background: var(--signal); box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); }
+/* A small expanding ring conveys a live runtime without competing with the
+   header. The separate active variant keeps the diagnostic-panel state orange. */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #149447; animation: status-pulse 1.8s ease-out infinite; }
+@keyframes status-pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(20, 148, 71, 0); } }
+.runtime-button.active .status-dot { background: var(--signal); animation-name: status-pulse-active; }
+.runtime-button:hover { color: var(--signal); }
+.runtime-button:hover .status-dot { background: var(--signal); animation-name: status-pulse-active; }
+@keyframes status-pulse-active { 0%, 100% { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(255, 59, 0, 0); } }
+@media (prefers-reduced-motion: reduce) { .status-dot { animation: none; box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); } .runtime-button.active .status-dot { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); } }
+
+/* Aligns a restored hash target precisely below the 64px sticky top bar. */
+section[id] { scroll-margin-top: 64px; }
 
 .section-grid { display: grid; grid-template-columns: minmax(52px, 7vw) minmax(0, 1fr); border-bottom: 1px solid var(--line); }
 .section-index { padding: var(--pad) 0 0 var(--pad); border-right: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.72rem; }

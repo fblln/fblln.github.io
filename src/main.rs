@@ -189,7 +189,34 @@ fn main() {
     leptos::mount::mount_to_body(move || {
         view! { <App boot_time=boot_time wasm_size=wasm_size.clone() /> }
     });
+    scroll_to_initial_fragment();
     reveal_site(boot_time);
+}
+
+/// Browsers resolve `/#experience` while the portfolio's mount point is still
+/// empty, so the native anchor jump is missed. Retry once after Leptos has added
+/// the sections, keeping links from the static Writing surface deep-linkable.
+fn scroll_to_initial_fragment() {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let Some(id) = window
+        .location()
+        .hash()
+        .ok()
+        .and_then(|hash| fragment_id(&hash).map(str::to_owned))
+    else {
+        return;
+    };
+    if let Some(target) = window.document().and_then(|document| document.get_element_by_id(&id)) {
+        target.scroll_into_view();
+    }
+}
+
+/// Turns the browser's optional leading-hash value into a DOM id. Keeping this
+/// tiny normalization separate makes the cross-surface deep-link contract testable.
+fn fragment_id(hash: &str) -> Option<&str> {
+    hash.strip_prefix('#').filter(|id| !id.is_empty())
 }
 
 /// The boot screen shows for at least this long on a cold load so the Rust-runtime
@@ -633,5 +660,12 @@ mod tests {
         ));
         assert!(project_matches(PROJECTS[2], "All", "wasm"));
         assert!(!project_matches(PROJECTS[0], "Research", "telemetry"));
+    }
+
+    #[test]
+    fn fragment_ids_keep_only_non_empty_hash_targets() {
+        assert_eq!(fragment_id("#experience"), Some("experience"));
+        assert_eq!(fragment_id("#"), None);
+        assert_eq!(fragment_id("experience"), None);
     }
 }

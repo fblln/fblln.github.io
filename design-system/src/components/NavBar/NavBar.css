@@ -16,6 +16,9 @@
   text-decoration: none;
   color: var(--ink);
 }
+.ds-wordmark:hover {
+  color: var(--signal);
+}
 .ds-nav {
   display: flex;
   justify-content: center;

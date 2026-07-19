@@ -63,6 +63,12 @@ fn main() {
         .map(PathBuf::from)
         .expect("pass an output dir or set TRUNK_STAGING_DIR");
     let articles_dir = out_root.join("articles");
+    // The staging directory is reused during `trunk serve`. Recreate this
+    // generator-owned subtree so moving a source into `drafts/` removes its old
+    // route, feed entry, and tag page instead of leaving stale public files.
+    if articles_dir.exists() {
+        fs::remove_dir_all(&articles_dir).expect("clear generated articles dir");
+    }
     fs::create_dir_all(&articles_dir).expect("create articles dir");
 
     // Trunk emits the wasm loader as `<name>-<hash>.js` at the dist root; find it so
@@ -269,8 +275,29 @@ fn hlevel(h: HeadingLevel) -> u8 {
 
 // ---- templates ----
 
-const TOPBAR: &str =
-    "<header class=\"topbar\"><a class=\"brand\" href=\"/\">← FE / 26</a><a href=\"/articles/\">WRITING</a><span class=\"wasm-badge\"><span class=\"dot\"></span>WASM/ACTIVE</span></header>";
+// Mirrors the portfolio app's <header class="topbar"> (src/main.rs) verbatim so
+// articles don't read as a separate site. Nav links jump to the home sections;
+// the runtime indicator is a static <span> here (no diagnostics panel to toggle
+// on article pages), styled identically to the app's button.
+const TOPBAR: &str = "<header class=\"topbar\">\
+<a class=\"wordmark\" href=\"/\" aria-label=\"Fabio Ellena home\">FE/26</a>\
+<nav aria-label=\"Primary navigation\">\
+<a href=\"/#work\">Work</a>\
+<a href=\"/#capabilities\">Stack</a>\
+<a href=\"/#experience\">Experience</a>\
+<a href=\"/#contact\">Contact</a>\
+<a href=\"/articles/\">Writing</a>\
+</nav>\
+<span class=\"runtime-button\"><span class=\"status-dot\"></span>WASM/ACTIVE</span>\
+<details class=\"mobile-nav\"><summary aria-label=\"Toggle navigation menu\">MENU</summary>\
+<nav aria-label=\"Primary navigation\">\
+<a href=\"/#work\">Work</a>\
+<a href=\"/#capabilities\">Stack</a>\
+<a href=\"/#experience\">Experience</a>\
+<a href=\"/#contact\">Contact</a>\
+<a href=\"/articles/\">Writing</a>\
+</nav></details>\
+</header>";
 const FOOTER: &str =
     "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
 
