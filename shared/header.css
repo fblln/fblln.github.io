@@ -49,11 +49,15 @@
 /* The pulse communicates a live runtime without dominating the header. Orange
    is reserved for hover/open state, which keeps the interaction consistent on
    both static and CSR routes. */
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #149447; animation: status-pulse 1.8s ease-out infinite; }
-@keyframes status-pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(20, 148, 71, 0); } }
+.status-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: #149447; }
+/* box-shadow animation repaints the header every frame. A pseudo-element pulse
+   preserves the same expanding-ring cue using only transform and opacity,
+   which browsers can keep on the compositor instead. */
+.status-dot::after { content: ""; position: absolute; inset: -4px; border: 1px solid rgba(20, 148, 71, 0.56); border-radius: inherit; animation: status-pulse 1.8s ease-out infinite; }
+@keyframes status-pulse { 0%, 100% { opacity: 0.25; transform: scale(1); } 55% { opacity: 0; transform: scale(1.5); } }
 .runtime-button:hover, .runtime-button.active { color: var(--signal); }
-.runtime-button:hover .status-dot, .runtime-button.active .status-dot { background: var(--signal); animation-name: status-pulse-active; }
-@keyframes status-pulse-active { 0%, 100% { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(255, 59, 0, 0); } }
+.runtime-button:hover .status-dot, .runtime-button.active .status-dot { background: var(--signal); }
+.runtime-button:hover .status-dot::after, .runtime-button.active .status-dot::after { border-color: rgba(255, 59, 0, 0.56); }
 
 .topbar nav a:focus-visible, .runtime-button:focus-visible {
   outline: 2px solid var(--signal);
@@ -74,8 +78,7 @@
 .diagnostic-grid strong { color: var(--signal); font-size: 1.05rem; word-break: break-word; }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-dot { animation: none; box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); }
-  .runtime-button:hover .status-dot, .runtime-button.active .status-dot { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); }
+  .status-dot::after { animation: none; opacity: 0.25; transform: scale(1); }
 }
 
 @media (max-width: 680px) {

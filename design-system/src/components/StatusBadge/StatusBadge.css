@@ -9,25 +9,32 @@
   text-transform: uppercase;
 }
 .ds-badge__dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--ok);
+}
+/* Mirrors the site's compositor-only pulse: transform and opacity avoid the
+   paint work caused by animating box-shadow while retaining the status ring. */
+.ds-badge__dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(20, 148, 71, 0.56);
+  border-radius: inherit;
   animation: ds-status-pulse 1.8s ease-out infinite;
 }
 @keyframes ds-status-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); }
-  55% { box-shadow: 0 0 0 8px rgba(20, 148, 71, 0); }
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  55% { opacity: 0; transform: scale(1.5); }
 }
 .ds-badge--active .ds-badge__dot {
   background: var(--signal);
-  animation-name: ds-status-pulse-active;
 }
-@keyframes ds-status-pulse-active {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); }
-  55% { box-shadow: 0 0 0 8px rgba(255, 59, 0, 0); }
+.ds-badge--active .ds-badge__dot::after {
+  border-color: rgba(255, 59, 0, 0.56);
 }
 @media (prefers-reduced-motion: reduce) {
-  .ds-badge__dot { animation: none; box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); }
-  .ds-badge--active .ds-badge__dot { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); }
+  .ds-badge__dot::after { animation: none; opacity: 0.25; transform: scale(1); }
 }

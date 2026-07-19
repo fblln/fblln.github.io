@@ -5,6 +5,8 @@
 # output on cold CI machines.
 set -eu
 
-cargo run --quiet --manifest-path tools/site/Cargo.toml
 cargo run --quiet --manifest-path tools/blog/Cargo.toml
 sh tools/minify.sh
+# The portfolio renderer replaces Trunk's stylesheet links with the minified
+# critical CSS it just produced, so it deliberately runs after minification.
+cargo run --quiet --manifest-path tools/site/Cargo.toml
