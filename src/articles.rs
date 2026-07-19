@@ -4,8 +4,8 @@
 //! reading-progress bar. Everything degrades to the plain static HTML if the
 //! bundle never loads.
 
-use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
 use web_sys::{Document, Element, HtmlElement, Window};
 
 /// True when the current page is under `/articles/` — the signal `main()` uses to
@@ -25,18 +25,25 @@ pub fn enhance() {
 
 /// Drop a "Copy" button into each code block's language header.
 fn add_copy_buttons(doc: &Document) {
-    let Ok(figures) = doc.query_selector_all("figure.codeblock") else { return };
+    let Ok(figures) = doc.query_selector_all("figure.codeblock") else {
+        return;
+    };
     for i in 0..figures.length() {
-        let Some(node) = figures.item(i) else { continue };
+        let Some(node) = figures.item(i) else {
+            continue;
+        };
         let figure: Element = node.unchecked_into();
-        let (Ok(Some(caption)), Ok(Some(code))) =
-            (figure.query_selector("figcaption"), figure.query_selector("pre code"))
-        else {
+        let (Ok(Some(caption)), Ok(Some(code))) = (
+            figure.query_selector("figcaption"),
+            figure.query_selector("pre code"),
+        ) else {
             continue;
         };
         let text = code.text_content().unwrap_or_default();
 
-        let Ok(button) = doc.create_element("button") else { continue };
+        let Ok(button) = doc.create_element("button") else {
+            continue;
+        };
         let _ = button.set_attribute("type", "button");
         let _ = button.set_attribute("class", "copy");
         button.set_text_content(Some("Copy"));
@@ -68,7 +75,9 @@ fn add_progress_bar(win: &Window, doc: &Document) {
     if !matches!(doc.query_selector("article"), Ok(Some(_))) {
         return;
     }
-    let Ok(bar) = doc.create_element("div") else { return };
+    let Ok(bar) = doc.create_element("div") else {
+        return;
+    };
     let _ = bar.set_attribute("class", "reading-progress");
     if let Some(body) = doc.body() {
         let _ = body.append_child(&bar);
@@ -79,8 +88,14 @@ fn add_progress_bar(win: &Window, doc: &Document) {
     let doc_ref = doc.clone();
     let update = Closure::<dyn FnMut()>::new(move || {
         let scrolled = win_ref.scroll_y().unwrap_or(0.0);
-        let viewport = win_ref.inner_height().ok().and_then(|v| v.as_f64()).unwrap_or(0.0);
-        let full = doc_ref.document_element().map_or(0.0, |el| el.scroll_height() as f64);
+        let viewport = win_ref
+            .inner_height()
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        let full = doc_ref
+            .document_element()
+            .map_or(0.0, |el| el.scroll_height() as f64);
         let pct = (scrolled / (full - viewport).max(1.0) * 100.0).clamp(0.0, 100.0);
         let _ = bar.style().set_property("width", &format!("{pct}%"));
     });
