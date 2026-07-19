@@ -208,7 +208,10 @@ fn scroll_to_initial_fragment() {
     else {
         return;
     };
-    if let Some(target) = window.document().and_then(|document| document.get_element_by_id(&id)) {
+    if let Some(target) = window
+        .document()
+        .and_then(|document| document.get_element_by_id(&id))
+    {
         target.scroll_into_view();
     }
 }
@@ -260,15 +263,13 @@ fn reveal_site(elapsed_ms: f64) {
         let _ = boot.set_attribute("class", "boot boot-hide");
         let remove = Closure::once_into_js(move || boot.remove());
         if let Some(window) = web_sys::window() {
-            let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
-                remove.unchecked_ref(),
-                460,
-            );
+            let _ = window
+                .set_timeout_with_callback_and_timeout_and_arguments_0(remove.unchecked_ref(), 460);
         }
     });
     let hold = (BOOT_MIN_MS - elapsed_ms).max(0.0) as i32;
-    let _ = window
-        .set_timeout_with_callback_and_timeout_and_arguments_0(fade.unchecked_ref(), hold);
+    let _ =
+        window.set_timeout_with_callback_and_timeout_and_arguments_0(fade.unchecked_ref(), hold);
 }
 
 #[component]

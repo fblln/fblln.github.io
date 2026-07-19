@@ -85,8 +85,9 @@ fn main() {
 
     let ss = SyntaxSet::load_defaults_newlines();
     let ts = ThemeSet::load_defaults();
-    let code_css = css_for_theme_with_class_style(&ts.themes["base16-ocean.dark"], ClassStyle::Spaced)
-        .expect("code theme css");
+    let code_css =
+        css_for_theme_with_class_style(&ts.themes["base16-ocean.dark"], ClassStyle::Spaced)
+            .expect("code theme css");
     fs::write(
         articles_dir.join("article.css"),
         format!("{READING_CSS}\n{code_css}\n"),
@@ -121,8 +122,11 @@ fn main() {
         fs::write(dir.join("index.html"), article_page(a, newer, older)).expect("write article");
     }
 
-    fs::write(articles_dir.join("index.html"), index_page("Notes & essays", None, &articles))
-        .expect("write index");
+    fs::write(
+        articles_dir.join("index.html"),
+        index_page("Notes & essays", None, &articles),
+    )
+    .expect("write index");
 
     // Per-tag pages.
     let mut tags: Vec<String> = articles.iter().flat_map(|a| a.fm.tags.clone()).collect();
@@ -131,10 +135,17 @@ fn main() {
     for tag in &tags {
         let dir = articles_dir.join("tags").join(slug(tag));
         fs::create_dir_all(&dir).expect("create tag dir");
-        let subset: Vec<&Article> = articles.iter().filter(|a| a.fm.tags.contains(tag)).collect();
+        let subset: Vec<&Article> = articles
+            .iter()
+            .filter(|a| a.fm.tags.contains(tag))
+            .collect();
         fs::write(
             dir.join("index.html"),
-            index_page(&format!("Tagged “{tag}”"), Some(tag), &subset_owned(&subset)),
+            index_page(
+                &format!("Tagged “{tag}”"),
+                Some(tag),
+                &subset_owned(&subset),
+            ),
         )
         .expect("write tag page");
     }
@@ -142,16 +153,23 @@ fn main() {
     fs::write(articles_dir.join("feed.xml"), atom_feed(&articles)).expect("write feed");
     fs::write(out_root.join("sitemap.xml"), sitemap(&articles)).expect("write sitemap");
 
-    println!("blog: generated {} article(s), {} tag(s)", articles.len(), tags.len());
+    println!(
+        "blog: generated {} article(s), {} tag(s)",
+        articles.len(),
+        tags.len()
+    );
 }
 
 /// Locate Trunk's wasm loader JS at the dist root (`index-<hash>.js`, i.e. a
 /// top-level `.js` that isn't the `_bg` wasm shim), returning its file name.
 fn find_bundle(dist: &std::path::Path) -> Option<String> {
-    fs::read_dir(dist).ok()?.filter_map(|e| e.ok()).find_map(|entry| {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        (name.ends_with(".js") && !name.ends_with("_bg.js")).then_some(name)
-    })
+    fs::read_dir(dist)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .find_map(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            (name.ends_with(".js") && !name.ends_with("_bg.js")).then_some(name)
+        })
 }
 
 /// Split TOML front matter (`+++ ... +++`) from the Markdown body, render it.
@@ -166,7 +184,13 @@ fn parse(slug: &str, raw: &str, ss: &SyntaxSet) -> Option<Article> {
     let words = md.split_whitespace().count();
     let minutes = (words / 200).max(1);
     let (body, toc) = render(md, ss);
-    Some(Article { slug: slug.to_string(), fm, body, toc, minutes })
+    Some(Article {
+        slug: slug.to_string(),
+        fm,
+        body,
+        toc,
+        minutes,
+    })
 }
 
 /// Render Markdown to HTML, highlighting code blocks and giving headings ids +
@@ -190,7 +214,11 @@ fn render(md: &str, ss: &SyntaxSet) -> (String, Vec<Head>) {
                     let (level, text) = heading.take().unwrap();
                     let id = slug(&text);
                     if (2..=3).contains(&level) {
-                        toc.push(Head { level, text: text.clone(), id: id.clone() });
+                        toc.push(Head {
+                            level,
+                            text: text.clone(),
+                            id: id.clone(),
+                        });
                     }
                     events.push(Event::Html(
                         format!(
@@ -216,7 +244,9 @@ fn render(md: &str, ss: &SyntaxSet) -> (String, Vec<Head>) {
             continue;
         }
         match event {
-            Event::Start(Tag::Heading { level, .. }) => heading = Some((hlevel(level), String::new())),
+            Event::Start(Tag::Heading { level, .. }) => {
+                heading = Some((hlevel(level), String::new()))
+            }
             Event::Start(Tag::CodeBlock(kind)) => {
                 let lang = match kind {
                     CodeBlockKind::Fenced(l) => l.to_string(),
@@ -328,12 +358,17 @@ fn article_page(a: &Article, newer: Option<&Article>, older: Option<&Article>) -
 <meta property=\"og:url\" content=\"{url}\">\
 <meta name=\"twitter:card\" content=\"summary\">"
     );
-    let tags: String = a
-        .fm
-        .tags
-        .iter()
-        .map(|t| format!("<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>", slug(t), esc(t)))
-        .collect();
+    let tags: String =
+        a.fm.tags
+            .iter()
+            .map(|t| {
+                format!(
+                    "<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>",
+                    slug(t),
+                    esc(t)
+                )
+            })
+            .collect();
     let body = format!(
         "<main><p class=\"eyebrow\">{date} · {min} min read</p>\
 <h1 class=\"title\">{title}</h1>\
@@ -362,8 +397,12 @@ fn post_nav(newer: Option<&Article>, older: Option<&Article>) -> String {
     };
     format!(
         "<nav class=\"post-nav\">{}{}</nav>",
-        older.map(|o| link(o, "older", "← Older")).unwrap_or_default(),
-        newer.map(|n| link(n, "newer", "Newer →")).unwrap_or_default(),
+        older
+            .map(|o| link(o, "older", "← Older"))
+            .unwrap_or_default(),
+        newer
+            .map(|n| link(n, "newer", "Newer →"))
+            .unwrap_or_default(),
     )
 }
 
@@ -373,7 +412,14 @@ fn toc_html(heads: &[Head]) -> String {
     }
     let items: String = heads
         .iter()
-        .map(|h| format!("<li class=\"lvl{}\"><a href=\"#{}\">{}</a></li>", h.level, h.id, esc(&h.text)))
+        .map(|h| {
+            format!(
+                "<li class=\"lvl{}\"><a href=\"#{}\">{}</a></li>",
+                h.level,
+                h.id,
+                esc(&h.text)
+            )
+        })
         .collect();
     format!("<nav class=\"toc\"><p class=\"toc-title\">Contents</p><ul>{items}</ul></nav>")
 }
@@ -441,7 +487,10 @@ fn subset_owned(subset: &[&Article]) -> Vec<Article> {
 }
 
 fn atom_feed(articles: &[Article]) -> String {
-    let updated = articles.first().map(|a| a.fm.date.as_str()).unwrap_or("1970-01-01");
+    let updated = articles
+        .first()
+        .map(|a| a.fm.date.as_str())
+        .unwrap_or("1970-01-01");
     let entries: String = articles
         .iter()
         .map(|a| {
@@ -493,10 +542,13 @@ fn strip_date_prefix(stem: &str) -> String {
     let b = stem.as_bytes();
     let dated = b.len() > 11
         && b[10] == b'-'
-        && b[..10]
-            .iter()
-            .enumerate()
-            .all(|(i, c)| if i == 4 || i == 7 { *c == b'-' } else { c.is_ascii_digit() });
+        && b[..10].iter().enumerate().all(|(i, c)| {
+            if i == 4 || i == 7 {
+                *c == b'-'
+            } else {
+                c.is_ascii_digit()
+            }
+        });
     if dated {
         stem[11..].to_string()
     } else {
