@@ -10,8 +10,11 @@ A full **Rust → WebAssembly** engineering portfolio, plus its design system.
 
 | Path | What it is | Stack |
 |------|-----------|-------|
-| `src/main.rs` | The site — a client-side-rendered single-page app | Rust, Leptos 0.8 (CSR), `web-sys` |
-| `styles.css` | Hand-authored styles + self-hosted `@font-face` | CSS |
+| `src/lib.rs` | Shared portfolio view — rendered natively at build time and hydrated in-browser | Rust, Leptos 0.8 (SSG/hydrate), `web-sys` |
+| `src/main.rs` | Minimal browser entry point | Rust |
+| `tools/site/` | Native Leptos → static portfolio HTML generator (Trunk post-build hook) | Rust |
+| `styles.css` | Hand-authored portfolio layout styles | CSS |
+| `shared/` | Navigation metadata plus typography/header CSS shared with Writing | Rust, CSS |
 | `assets/fonts/` | Latin-subset woff2 (Archivo display, IBM Plex Mono labels) | — |
 | `content/articles/` | Markdown articles | — |
 | `tools/blog/` | Build-time Markdown → static HTML article generator (Trunk post-build hook) | Rust |
@@ -26,7 +29,8 @@ sync" below — it is a hard invariant.
 trunk serve            # dev server at http://127.0.0.1:8080
 trunk build            # debug build into dist/
 trunk build --release  # production build (opt-level=z, lto, panic=abort, strip)
-cargo test             # unit tests (native target)
+cargo test             # unit tests (native CSR target)
+cargo test --no-default-features --features ssr # static renderer tests
 cargo fmt --check      # formatting gate (CI enforces)
 
 cd design-system && npm run build       # emit dist/ (JS + d.ts + styles.css)
@@ -34,7 +38,7 @@ cd design-system && npm run storybook   # component workbench at :6006
 ```
 
 CI (`.github/workflows/ci.yml`) gates every PR on: `cargo fmt --check`,
-`cargo test`, `cargo check --target wasm32-unknown-unknown`, a release build, and
+CSR + SSR + generator tests, a hydrate-mode wasm32 check, a release build, and
 a **compressed-WASM budget of ≤ 512000 bytes**. Do not regress the budget; if a
 change grows the bundle, justify it or pay it back elsewhere.
 
@@ -48,7 +52,7 @@ These are the point of this file. They apply to Rust and TypeScript alike.
   it. Coverage is measured, not assumed — a line with no test is treated as a
   line that does not work. Untested logic does not merge.
   - Rust: `cargo llvm-cov --workspace` (install `cargo-llvm-cov`). Target 100%
-    line + branch on all non-`main`/non-view logic; assert it in CI once wired.
+    line + branch on all non-entry-point/non-view logic; assert it in CI once wired.
   - Design system: `vitest run --coverage` with the coverage threshold set to
     100 in the Vitest config.
 - **Invariants covered by mutation testing.** Line coverage proves code ran, not
@@ -80,8 +84,8 @@ end to end. A PR without all three is incomplete.
 
 ### 2. File decomposition
 
-Small, single-responsibility files with clear seams. `src/main.rs` currently
-holds the whole app in one file — when you touch it, pull cohesive pieces into
+Small, single-responsibility files with clear seams. `src/lib.rs` currently
+holds most of the portfolio view — when you touch a cohesive area, pull it into
 their own modules (e.g. `projects` data, `keyboard` handling, `runtime`
 diagnostics, each `view` component) rather than growing the monolith. A file
 should have one reason to change and be readable top to bottom without scrolling
@@ -105,8 +109,9 @@ the reasoning are the point.
 the live site. **Any change to the site's design tokens must be mirrored in the
 design system, in the same change.**
 
-- Site tokens live in `styles.css` (`:root` + `@font-face`); the DS mirrors them
-  in `design-system/src/styles/tokens.css` and self-hosts the identical fonts in
+- Site layout tokens live in `styles.css`; shared font declarations and stacks
+  live in `shared/typography.css`. The DS mirrors them in
+  `design-system/src/styles/tokens.css` and self-hosts the identical fonts in
   `design-system/src/styles/fonts.css` (same woff2 as `assets/fonts/`, inlined as
   data URIs so `dist/index.css` stays self-contained).
 - Change a color, `--font-sans`/`--font-mono`, `--line`, or spacing on the site →

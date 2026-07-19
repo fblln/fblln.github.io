@@ -1,0 +1,18 @@
+/* One self-hosted type contract for every route. Keeping the font-face sources
+   and fallback stacks here avoids synthetic weight changes and mixed fallback
+   glyphs when navigating between the CSR portfolio and static Writing pages. */
+@font-face { font-family: "Archivo"; font-weight: 400; font-style: normal; font-display: swap; src: url(/assets/fonts/archivo-400.woff2) format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 700; font-style: normal; font-display: swap; src: url(/assets/fonts/archivo-700.woff2) format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 800; font-style: normal; font-display: swap; src: url(/assets/fonts/archivo-800.woff2) format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 900; font-style: normal; font-display: swap; src: url(/assets/fonts/archivo-900.woff2) format("woff2"); }
+/* The version pins the corrected Latin subsets against stale browser caches. */
+@font-face { font-family: "IBM Plex Mono"; font-weight: 500; font-style: normal; font-display: swap; src: url(/assets/fonts/ibm-plex-mono-500.woff2?v=2) format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 700; font-style: normal; font-display: swap; src: url(/assets/fonts/ibm-plex-mono-700.woff2?v=2) format("woff2"); }
+
+:root {
+  --font-sans: "Archivo", Arial, Helvetica, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+}

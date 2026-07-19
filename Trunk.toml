@@ -9,23 +9,17 @@ filehash = true
 minify = "never"
 no_sri = true
 
-# Generate static article pages from content/articles/*.md into dist/articles/.
-[[hooks]]
-stage = "post_build"
-command = "cargo"
-command_arguments = ["run", "--quiet", "--manifest-path", "tools/blog/Cargo.toml"]
-
+# Render the portfolio, generate articles, then minify in a deterministic order.
 [[hooks]]
 stage = "post_build"
 command = "sh"
-command_arguments = ["tools/minify.sh"]
+command_arguments = ["tools/post-build.sh"]
 
 [watch]
-watch = ["src", "styles.css", "index.html", "assets", "content", "tools/blog/src", "tools/blog/article.css"]
+watch = ["src", "shared", "styles.css", "index.html", "assets", "content", "tools/blog/src", "tools/blog/article.css"]
 ignore = ["dist"]
 
 [serve]
 addresses = ["127.0.0.1"]
 port = 8080
 open = false
-

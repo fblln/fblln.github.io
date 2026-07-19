@@ -29,9 +29,11 @@
     </script>
     <!-- Current rustc enables bulk-memory & friends by default for wasm32; trunk's
          bundled wasm-opt needs them explicitly enabled or the release build fails. -->
-    <link data-trunk rel="rust"
+    <link data-trunk rel="rust" data-cargo-no-default-features data-cargo-features="hydrate"
       data-wasm-opt-params="--enable-bulk-memory --enable-nontrapping-float-to-int --enable-multivalue --enable-mutable-globals --enable-sign-ext --enable-reference-types" />
+    <link data-trunk rel="css" href="shared/typography.css" />
     <link data-trunk rel="css" href="styles.css" />
+    <link data-trunk rel="css" href="shared/header.css" />
     <link data-trunk rel="copy-dir" href="assets" />
     <link data-trunk rel="copy-file" href="robots.txt" />
     <link data-trunk rel="copy-file" href="sitemap.xml" />

@@ -32,9 +32,13 @@ jobs:
       - name: Format
         run: cargo fmt --check
       - name: Unit tests
-        run: cargo test
+        run: |
+          cargo test
+          cargo test --no-default-features --features ssr
+          cargo test --manifest-path tools/site/Cargo.toml
+          cargo test --manifest-path tools/blog/Cargo.toml
       - name: Check WebAssembly target
-        run: cargo check --target wasm32-unknown-unknown
+        run: cargo check --target wasm32-unknown-unknown --no-default-features --features hydrate
       - name: Build release site
         env:
           BUILD_SHA: ${{ github.sha }}

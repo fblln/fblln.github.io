@@ -6,6 +6,9 @@
 //! (an explicit arg overrides it for manual runs). Code blocks are highlighted
 //! at build time with syntect — no client-side JS.
 
+#[path = "../../../shared/navigation.rs"]
+mod navigation;
+
 use std::{env, fs, path::PathBuf, sync::OnceLock};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
@@ -18,6 +21,8 @@ use syntect::util::LinesWithEndings;
 const BASE: &str = "https://fblln.github.io";
 const AUTHOR: &str = "Fabio Ellena";
 const READING_CSS: &str = include_str!("../article.css");
+const SHARED_TYPOGRAPHY_CSS: &str = include_str!("../../../shared/typography.css");
+const SHARED_HEADER_CSS: &str = include_str!("../../../shared/header.css");
 
 /// `<script>` that loads the site's wasm bundle to enhance article pages (copy
 /// buttons, reading-progress bar). Empty when no bundle is present — e.g. a manual
@@ -88,11 +93,7 @@ fn main() {
     let code_css =
         css_for_theme_with_class_style(&ts.themes["base16-ocean.dark"], ClassStyle::Spaced)
             .expect("code theme css");
-    fs::write(
-        articles_dir.join("article.css"),
-        format!("{READING_CSS}\n{code_css}\n"),
-    )
-    .expect("write article.css");
+    fs::write(articles_dir.join("article.css"), article_css(&code_css)).expect("write article.css");
 
     let mut articles: Vec<Article> = Vec::new();
     let content = PathBuf::from("content/articles");
@@ -305,29 +306,38 @@ fn hlevel(h: HeadingLevel) -> u8 {
 
 // ---- templates ----
 
-// Mirrors the portfolio app's <header class="topbar"> (src/main.rs) verbatim so
-// articles don't read as a separate site. Nav links jump to the home sections;
-// the runtime indicator is a static <span> here (no diagnostics panel to toggle
-// on article pages), styled identically to the app's button.
-const TOPBAR: &str = "<header class=\"topbar\">\
+/// Renders the static header from the same navigation data used by Leptos. Home
+/// section fragments gain a root prefix because article pages live below
+/// `/articles/`; Writing stays absolute. The runtime button is enhanced by the
+/// shared WASM bundle when available and remains harmless without JavaScript.
+fn topbar() -> String {
+    let links: String = navigation::PRIMARY_NAV
+        .iter()
+        .map(|item| {
+            let href = if item.href.starts_with('#') {
+                format!("/{}", item.href)
+            } else {
+                item.href.to_string()
+            };
+            format!("<a href=\"{href}\">{}</a>", item.label)
+        })
+        .collect();
+    format!("<header class=\"topbar\">\
 <a class=\"wordmark\" href=\"/\" aria-label=\"Fabio Ellena home\">FE/26</a>\
-<nav aria-label=\"Primary navigation\">\
-<a href=\"/#work\">Work</a>\
-<a href=\"/#capabilities\">Stack</a>\
-<a href=\"/#experience\">Experience</a>\
-<a href=\"/#contact\">Contact</a>\
-<a href=\"/articles/\">Writing</a>\
-</nav>\
+<nav aria-label=\"Primary navigation\">{links}</nav>\
 <button class=\"runtime-button\" type=\"button\" aria-controls=\"system-panel\" aria-expanded=\"false\"><span class=\"status-dot\"></span>WASM/ACTIVE</button>\
 <details class=\"mobile-nav\"><summary aria-label=\"Toggle navigation menu\">MENU</summary>\
-<nav aria-label=\"Primary navigation\">\
-<a href=\"/#work\">Work</a>\
-<a href=\"/#capabilities\">Stack</a>\
-<a href=\"/#experience\">Experience</a>\
-<a href=\"/#contact\">Contact</a>\
-<a href=\"/articles/\">Writing</a>\
-</nav></details>\
-</header>";
+<nav aria-label=\"Primary navigation\">{links}</nav></details>\
+</header>")
+}
+
+/// Composes Writing-specific rules around the shared type and header contracts.
+/// The order matters: article layout may specialize base tokens, then the
+/// shared header reasserts its chrome without duplicating either source file.
+fn article_css(code_css: &str) -> String {
+    format!("{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n")
+}
+
 const FOOTER: &str =
     "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
 
@@ -340,7 +350,7 @@ fn shell(head: &str, body: &str) -> String {
 <link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 fill=%22%230a0a0a%22/><path d=%22M14 12h36v8H23v9h22v8H23v15h-9z%22 fill=%22white%22/></svg>\">{head}\
 <link rel=\"stylesheet\" href=\"/articles/article.css\">\
 <link rel=\"alternate\" type=\"application/atom+xml\" href=\"/articles/feed.xml\" title=\"Fabio Ellena — Writing\">\
-</head><body>{TOPBAR}{body}{FOOTER}{enhance}</body></html>"
+</head><body>{topbar}{body}{FOOTER}{enhance}</body></html>", topbar = topbar()
     )
 }
 
@@ -569,4 +579,38 @@ fn slug(s: &str) -> String {
         }
     }
     out.trim_matches('-').to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{article_css, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS};
+
+    /// Static pages live below `/articles/`, so leaving fragment-only links in
+    /// either desktop or mobile navigation would scroll the wrong document.
+    #[test]
+    fn topbar_rebases_home_fragments_in_both_navigation_variants() {
+        let html = topbar();
+
+        for href in ["/#work", "/#capabilities", "/#experience", "/#contact"] {
+            assert_eq!(html.matches(&format!("href=\"{href}\"")).count(), 2);
+        }
+        assert_eq!(html.matches("href=\"/articles/\"").count(), 2);
+        assert!(!html.contains("href=\"#"));
+        assert!(html.contains("aria-controls=\"system-panel\""));
+    }
+
+    /// Fonts must be declared before article layout consumes the variables, and
+    /// the header must follow that layout so its border/type contract wins over
+    /// reading-surface specializations.
+    #[test]
+    fn article_styles_preserve_shared_contract_order() {
+        let css = article_css("/* syntax */");
+        let typography = css.find(SHARED_TYPOGRAPHY_CSS).expect("typography css");
+        let header = css.find(SHARED_HEADER_CSS).expect("header css");
+        let syntax = css.find("/* syntax */").expect("syntax css");
+
+        assert_eq!(typography, 0);
+        assert!(typography < header);
+        assert!(header < syntax);
+    }
 }
