@@ -270,7 +270,7 @@ fn hlevel(h: HeadingLevel) -> u8 {
 // ---- templates ----
 
 const TOPBAR: &str =
-    "<header class=\"topbar\"><a class=\"brand\" href=\"/\">← FE / 26</a><a href=\"/articles/\">WRITING</a></header>";
+    "<header class=\"topbar\"><a class=\"brand\" href=\"/\">← FE / 26</a><span class=\"wasm-badge\"><span class=\"dot\"></span>WASM/ACTIVE</span><a href=\"/articles/\">WRITING</a></header>";
 const FOOTER: &str =
     "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
 
