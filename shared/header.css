@@ -1,0 +1,91 @@
+/* Shared navigation chrome for the Leptos portfolio and build-time Writing
+   pages. Both surfaces define the same design tokens before this file is
+   applied; keeping component rules here prevents one-pixel and type-rendering
+   drift when crossing the route boundary. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 var(--pad);
+  border-bottom: 1px solid rgba(10, 10, 10, 0.3);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  line-height: normal;
+  color: var(--ink);
+  text-rendering: geometricPrecision;
+  text-transform: none;
+  letter-spacing: normal;
+  background: color-mix(in srgb, var(--paper) 93%, transparent);
+  backdrop-filter: blur(14px);
+}
+.topbar a { color: var(--ink); text-decoration: none; }
+.topbar a:hover { color: var(--ink); }
+.topbar .wordmark:hover { color: var(--signal); }
+.wordmark { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.05em; }
+.topbar nav { display: flex; gap: clamp(1rem, 3vw, 2.5rem); }
+.topbar nav a { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.topbar nav a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 5px; }
+.mobile-nav { display: none; }
+
+.runtime-button {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+/* The pulse communicates a live runtime without dominating the header. Orange
+   is reserved for hover/open state, which keeps the interaction consistent on
+   both static and CSR routes. */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #149447; animation: status-pulse 1.8s ease-out infinite; }
+@keyframes status-pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(20, 148, 71, 0); } }
+.runtime-button:hover, .runtime-button.active { color: var(--signal); }
+.runtime-button:hover .status-dot, .runtime-button.active .status-dot { background: var(--signal); animation-name: status-pulse-active; }
+@keyframes status-pulse-active { 0%, 100% { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); } 55% { box-shadow: 0 0 0 8px rgba(255, 59, 0, 0); } }
+
+.topbar nav a:focus-visible, .runtime-button:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+/* Static Writing pages acquire this panel only after WASM loads, while the
+   portfolio renders it directly. A shared off-canvas contract makes the
+   progressive enhancement invisible to the user. */
+.system-panel { position: fixed; z-index: 40; top: 0; right: 0; width: min(640px, 100%); height: 100dvh; overflow-y: auto; background: var(--ink); color: var(--paper); transform: translateX(102%); transition: transform 260ms cubic-bezier(.2,.8,.2,1); box-shadow: -20px 0 50px rgba(0,0,0,0.25); }
+.system-panel.open { transform: translateX(0); }
+.panel-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid rgba(242,240,233,0.25); background: var(--ink); font-family: var(--font-mono); font-size: 0.68rem; }
+.panel-head button { border: 0; padding: 0; background: transparent; color: var(--paper); font-family: inherit; cursor: pointer; }
+.system-panel > p { padding: 1.5rem; color: rgba(242,240,233,0.65); line-height: 1.5; }
+.diagnostic-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.diagnostic-grid div { display: grid; gap: 0.8rem; min-height: 130px; padding: 1.25rem; border-right: 1px solid rgba(242,240,233,0.2); border-bottom: 1px solid rgba(242,240,233,0.2); }
+.diagnostic-grid span { color: rgba(242,240,233,0.55); font-family: var(--font-mono); font-size: 0.62rem; }
+.diagnostic-grid strong { color: var(--signal); font-size: 1.05rem; word-break: break-word; }
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot { animation: none; box-shadow: 0 0 0 4px rgba(20, 148, 71, 0.14); }
+  .runtime-button:hover .status-dot, .runtime-button.active .status-dot { box-shadow: 0 0 0 4px rgba(255, 59, 0, 0.14); }
+}
+
+@media (max-width: 680px) {
+  .topbar { grid-template-columns: 1fr auto auto; gap: 0.75rem; }
+  .topbar > nav { display: none; }
+  .mobile-nav { display: block; justify-self: end; }
+  .mobile-nav summary { list-style: none; cursor: pointer; padding: 0.4rem 0.6rem; border: 1px solid var(--ink); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .mobile-nav summary::-webkit-details-marker { display: none; }
+  .mobile-nav[open] summary { background: var(--ink); color: var(--paper); }
+  .mobile-nav nav { position: absolute; top: 100%; left: 0; right: 0; display: flex; flex-direction: column; background: var(--paper); border-bottom: 1px solid var(--line); box-shadow: 0 20px 40px rgba(10, 10, 10, 0.14); }
+  .mobile-nav nav a { padding: 1rem var(--pad); border-top: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .mobile-nav nav a:active { background: var(--ink); color: var(--paper); }
+}

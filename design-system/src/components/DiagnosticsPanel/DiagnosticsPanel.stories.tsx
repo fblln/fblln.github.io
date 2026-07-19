@@ -7,7 +7,7 @@ const meta: Meta<typeof DiagnosticsPanel> = {
   parameters: { layout: "fullscreen", surface: "ink" },
   args: {
     items: [
-      { label: "Application", value: "LEPTOS CSR" },
+      { label: "Application", value: "LEPTOS SSG/HYDRATE" },
       { label: "Target", value: "WASM32-UNKNOWN-UNKNOWN" },
       { label: "Boot to WASM entry", value: "10.0 ms" },
       { label: "WASM received", value: "64 KiB" },
