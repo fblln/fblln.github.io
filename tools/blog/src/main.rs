@@ -591,6 +591,19 @@ mod tests {
         assert!(header < syntax);
     }
 
+    /// Fragment identifiers are emitted on article headings, not their anchor
+    /// children, so the generated CSS must offset those exact elements below
+    /// the shared sticky bar.
+    #[test]
+    fn article_heading_targets_clear_the_sticky_header() {
+        let css = article_css("");
+
+        assert!(css.contains(
+            "article h2[id], article h3[id] { scroll-margin-top: calc(64px + 1.5rem); }"
+        ));
+        assert!(!css.contains(":target { scroll-margin-top"));
+    }
+
     #[test]
     fn tag_markup_normalizes_routes_and_escapes_labels() {
         let html = render_tags(&["Rust & WASM".to_string()]);

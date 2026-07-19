@@ -86,7 +86,10 @@ article th, article td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; 
 .toc li.lvl3 { padding-left: 1rem; }
 .toc a { text-decoration: none; color: var(--ink); }
 .toc a:hover { color: var(--signal); }
-:target { scroll-margin-top: 1.5rem; }
+/* The heading itself owns the fragment id. Account for the shared 64px sticky
+   top bar so a table-of-contents jump reveals the heading instead of hiding it
+   and making the following paragraph look like the destination. */
+article h2[id], article h3[id] { scroll-margin-top: calc(64px + 1.5rem); }
 
 .post-nav { display: flex; justify-content: space-between; gap: 1.5rem; margin: 3.5rem 0 0; padding-top: 1.6rem; border-top: 1px solid var(--line); }
 .post-nav a { text-decoration: none; max-width: 46%; }
