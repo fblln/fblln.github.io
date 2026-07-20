@@ -56,6 +56,11 @@
   color: var(--muted);
   font-style: italic;
 }
+/* Prose HTML commonly contains a paragraph inside blockquotes. Let the quote's
+   own padding control its height instead of inheriting the paragraph rhythm. */
+.ds-prose blockquote p {
+  margin: 0;
+}
 .ds-prose img {
   max-width: 100%;
   height: auto;

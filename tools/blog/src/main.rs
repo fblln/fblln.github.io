@@ -562,6 +562,9 @@ fn slug(s: &str) -> String {
 mod tests {
     use super::{article_css, render_tags, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS};
 
+    const DESIGN_SYSTEM_PROSE_CSS: &str =
+        include_str!("../../../design-system/src/components/Prose/Prose.css");
+
     /// Static pages live below `/articles/`, so leaving fragment-only links in
     /// either desktop or mobile navigation would scroll the wrong document.
     #[test]
@@ -602,6 +605,31 @@ mod tests {
             "article h2[id], article h3[id] { scroll-margin-top: calc(64px + 1.5rem); }"
         ));
         assert!(!css.contains(":target { scroll-margin-top"));
+    }
+
+    /// Markdown emits `<blockquote><p>…</p></blockquote>`, so the ordinary
+    /// paragraph margin must not inflate quotes. Pin the reset on both surfaces
+    /// because article/design-system spacing drift is a release-blocking bug.
+    #[test]
+    fn blockquote_paragraphs_do_not_add_trailing_space() {
+        let article = article_css("");
+
+        assert!(article.contains("article blockquote p { margin: 0; }"));
+        assert!(DESIGN_SYSTEM_PROSE_CSS.contains(".ds-prose blockquote p {\n  margin: 0;\n}"));
+    }
+
+    /// Article chrome may span the page container, but prose shares the design
+    /// system's narrower measure and the contents only divides into columns
+    /// while the viewport can support them without cramped labels.
+    #[test]
+    fn article_measure_and_contents_columns_preserve_readability() {
+        let css = article_css("");
+
+        assert!(css.contains("article { max-width: 41rem; }"));
+        assert!(DESIGN_SYSTEM_PROSE_CSS.contains("max-width: 41rem;"));
+        assert!(css.contains(".toc ul { column-count: 2; column-gap: 2rem;"));
+        assert!(css.contains(".toc li { break-inside: avoid;"));
+        assert!(css.contains("@media (max-width: 40rem) { .toc ul { column-count: 1; } }"));
     }
 
     #[test]

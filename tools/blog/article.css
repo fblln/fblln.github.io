@@ -30,6 +30,9 @@ h1.title { font-family: var(--font-sans); font-weight: 800; font-size: clamp(2re
 .post-meta .tag { text-decoration: none; border: 1px solid var(--line); padding: 0.22rem 0.5rem; border-radius: 2px; }
 .post-meta .tag:hover { border-color: var(--signal); color: var(--signal); }
 
+/* Headline furniture can use the full page measure, but continuous prose stays
+   narrow enough to preserve the reader's place when moving between lines. */
+article { max-width: 41rem; }
 article h2, article h3 { position: relative; font-family: var(--font-sans); letter-spacing: -0.01em; line-height: 1.2; margin: 2.6rem 0 0.9rem; }
 article h2 .anchor, article h3 .anchor { position: absolute; left: -1.15rem; text-decoration: none; color: var(--line); opacity: 0; transition: opacity 0.12s; }
 article h2:hover .anchor, article h3:hover .anchor, article .anchor:focus { opacity: 1; color: var(--signal); }
@@ -41,6 +44,9 @@ article ul, article ol { margin: 0 0 1.3rem; padding-left: 1.4rem; }
 article li { margin: 0.35rem 0; }
 article img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin: 2rem auto; }
 article blockquote { margin: 2rem 0; padding: 0.4rem 0 0.4rem 1.3rem; border-left: 3px solid var(--signal); color: var(--muted); font-style: italic; }
+/* Markdown wraps quote text in a paragraph. Reset its global rhythm so the
+   blockquote padding, rather than a trailing paragraph margin, sizes the callout. */
+article blockquote p { margin: 0; }
 article hr { border: none; border-top: 1px solid var(--line); margin: 3rem 0; }
 
 article :not(pre) > code { font-family: var(--code-font); font-size: 0.86em; background: rgba(10, 10, 10, 0.06); padding: 0.12em 0.38em; border-radius: 3px; }
@@ -81,11 +87,14 @@ article th, article td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; 
 
 .toc { border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2.5rem; font-size: 0.92rem; }
 .toc-title { font: 700 0.7rem/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
-.toc ul { list-style: none; margin: 0; padding: 0; }
-.toc li { margin: 0.3rem 0; }
+.toc ul { column-count: 2; column-gap: 2rem; list-style: none; margin: 0; padding: 0; }
+.toc li { break-inside: avoid; margin: 0 0 0.6rem; }
 .toc li.lvl3 { padding-left: 1rem; }
 .toc a { text-decoration: none; color: var(--ink); }
 .toc a:hover { color: var(--signal); }
+/* A single scanning column avoids cramped or wrapped contents labels once the
+   viewport can no longer support two useful columns. */
+@media (max-width: 40rem) { .toc ul { column-count: 1; } }
 /* The heading itself owns the fragment id. Account for the shared 64px sticky
    top bar so a table-of-contents jump reveals the heading instead of hiding it
    and making the following paragraph look like the destination. */
