@@ -1,7 +1,7 @@
 +++
 title = "A Data Race You Can See"
 date = "2026-07-24"
-description = "A u32 on an 8-bit CPU is four load instructions, and an interrupt landing between two of them returns a number that was never in memory. Lab 4 of a bare-metal Rust curriculum: the CTC off-by-one hiding in my own solution code, why the compiler is entitled to break this even when the race never fires, and the WCET tail the carry predicts."
+description = "A u32 on an 8-bit CPU is four load instructions, and an interrupt landing between two of them returns a number that was never in memory. Lab 4 of a bare-metal Rust curriculum: the CTC off-by-one hiding in my own solution code, why the compiler is entitled to break this even when the race never fires."
 tags = ["Rust", "Embedded", "Concurrency"]
 +++
 
@@ -36,8 +36,7 @@ this writing:
 That fourth row is the uncomfortable one, and I have left it uncomfortable
 rather than rounding it up to "measured". The analysis script is real and
 tested; the capture it was tested against is not a board. Every prediction below
-is written so that the bench run can falsify it, and the last section states
-exactly what would.
+is written so that a bench run can falsify it.
 
 ## The machine is narrower than the number
 
@@ -687,74 +686,6 @@ it, because lab 6 introduces the wrapping form and its manual notes that *most
 students write the naive comparison*. Mine did too. The honest fix is to teach
 the diff at that point rather than to pretend the earlier code was always right.
 
-## The tail and the tear share a cause
-
-Measuring how long the handler takes is Lab 5's job, and the method is a spare
-pin toggled at entry and exit against a logic analyser. But the shape of the
-answer can be predicted from here, and it is worth writing the prediction down
-before owning the measurement that could refute it.
-
-The claim is that the handler does *not* have one execution time. It has a
-common case and a rare slow path, and the slow path is neither jitter nor
-scheduling noise nor analyser error. It is arithmetic.
-
-Incrementing a `u32` byte-wise normally touches one byte. The carry propagates
-into the second only when the low byte wraps — once in 256 — and into the third
-once in 65,536.
-
-<figure class="diagram">
-<svg viewBox="0 0 620 168" role="img" aria-label="Three rows showing how often each byte of the counter is written over 3000 ticks: byte 0 every tick, byte 1 about twelve times, byte 2 not at all">
-  <g font-family="var(--font-mono)" font-size="9">
-    <text x="0" y="24" font-size="10" fill="var(--muted)">BYTE 0</text>
-    <rect x="92" y="12" width="416" height="16" fill="var(--ink)"/>
-    <text x="588" y="24" fill="var(--ink)" text-anchor="end">3000</text>
-    <text x="92" y="42" fill="var(--muted)">every tick &mdash; the common path</text>
-    <text x="0" y="76" font-size="10" fill="var(--muted)">BYTE 1</text>
-    <g stroke="#ff3b00" stroke-width="2">
-      <path d="M127 64 L127 80 M162 64 L162 80 M197 64 L197 80 M232 64 L232 80 M267 64 L267 80 M302 64 L302 80 M337 64 L337 80 M372 64 L372 80 M407 64 L407 80 M442 64 L442 80 M477 64 L477 80 M508 64 L508 80"/>
-    </g>
-    <line x1="92" y1="72" x2="508" y2="72" stroke="var(--line)"/>
-    <text x="588" y="76" fill="#ff3b00" text-anchor="end">11.7</text>
-    <text x="92" y="94" fill="var(--muted)">once every 256 ticks &mdash; the carry</text>
-    <text x="0" y="128" font-size="10" fill="var(--muted)">BYTE 2</text>
-    <line x1="92" y1="124" x2="508" y2="124" stroke="var(--line)"/>
-    <text x="588" y="128" fill="var(--muted)" text-anchor="end">0.05</text>
-    <text x="92" y="146" fill="var(--muted)">once every 65,536 ticks &mdash; expect none in a capture this short</text>
-  </g>
-  <line x1="0" y1="156" x2="620" y2="156" stroke="var(--line)"/>
-  <text x="0" y="168" font-family="var(--font-mono)" font-size="10" fill="var(--ink)">prediction: a discrete slow mode holding &asymp; 0.4 % of executions, not a smooth spread</text>
-</svg>
-<figcaption>Three seconds of ticks at 1 kHz. The model expects 11.7 carries into the second byte — so a capture that long should contain about a dozen slow executions and no very slow ones. If the distribution instead spreads smoothly, the tail is something else and this model is wrong.</figcaption>
-</figure>
-
-That is the connection the lab is built around: the same 1-in-256 event produces
-the slow executions and the wrong values. From inside the handler a carry is an
-extra byte to write; from outside it is the byte that turns a stale read into a
-false one. One mechanism, two symptoms, and only one of them is visible on an
-analyser.
-
-One caveat on how much a match would prove. The analysis script that will chew
-through the capture was itself developed against generated data with a carry
-path built into it, so agreement between the script's output and this model
-demonstrates the script works. It says nothing about silicon. Only the bench run
-does, which is why the predictions below are stated as things that can fail.
-
-## What the bench has to show
-
-Writing the predictions down before the measurement is the entire point, so
-here they are, falsifiable:
-
-| Prediction | Falsified if |
-|---|---|
-| `OCR0A = 250` runs 0.398 % slow | Stopwatch over 60 s shows < 0.2 % or > 0.6 % |
-| Setting `OCR0A = 249` removes it | Error stays above the crystal's ±50 ppm |
-| ISR distribution is multi-modal | A single smooth cluster with no discrete second mode |
-| Second mode holds ≈ 0.4 % of samples | Materially more or fewer than ~1 in 256 |
-| The slowest execution far exceeds the typical one | Slowest is within a few percent of the median |
-| The `static mut` build passes anyway | It tears, visibly, at `opt-level = "s"` |
-
-The last one is the one I would most enjoy being wrong about.
-
 ## What the small machine is for
 
 Three defects, and only one is the one in the title.
@@ -771,11 +702,3 @@ way I know to acquire that is to work somewhere small enough that "between the
 instructions" is a place you can point at.
 
 Two kilobytes of SRAM is not a limitation for this. It is the instrument.
-
----
-
-*Lab 4 of thirteen, from a bare-metal Rust curriculum in progress. Solution
-code, the instructor manual, and `analyse_wcet.py` live in the project repo;
-validation status is tracked in its README, currently 0/13 on hardware.
-[*Fill in: repo URL once `rust-avr-lab` is public.*] Next: Lab 5, worst-case
-execution time, where these predictions meet an analyser.*
