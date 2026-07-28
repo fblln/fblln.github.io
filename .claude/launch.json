@@ -5,7 +5,8 @@
       "name": "site",
       "runtimeExecutable": "trunk",
       "runtimeArgs": ["serve", "--port", "8080", "--no-autoreload"],
-      "port": 8080
+      "port": 8080,
+      "autoPort": false
     }
   ]
 }
