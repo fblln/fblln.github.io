@@ -34,9 +34,10 @@ this writing:
 | Anything about timing on real silicon | **Not yet run.** Zero of thirteen labs are validated on hardware |
 
 That fourth row is the uncomfortable one, and I have left it uncomfortable
-rather than rounding it up to "measured". The analysis script is real and
-tested; the capture it was tested against is not a board. Every prediction below
-is written so that a bench run can falsify it.
+rather than rounding it up to "measured". Every number below that a board could
+contradict is written so that a board can: as a rate, a percentage, or a
+distribution someone with a stopwatch and a logic analyser can go and disagree
+with.
 
 ## The machine is narrower than the number
 
@@ -127,14 +128,21 @@ for it is 249. Write 250 and the timer counts 251:
 error = 1 − 996.016/1000         →  0.398 %  →  239 ms slow per minute
 ```
 
+The correction is to keep the constant as the divisor it is and subtract the one
+the hardware adds back:
+
+```rust
+tc0.ocr0a().write(|w| w.set((TIMER_COUNTS - 1) as u8));   // 249, for 250 counts
+```
+
 I like this bug more than the data race. It is one character. It lives in a line
 that reads correctly out loud, under a comment that is genuinely true. It
 survives every test that asserts the counter increments, because the counter
 does increment. And 0.4 % is close enough to plausible clock error that my own
 lab manual's expected-results table waves at it and calls it *crystal-limited* —
 which cannot be right, because an Uno R3's 16 MHz crystal is a ±50 ppm part.
-That is 0.005 %. The observed error would have to be eighty times the component
-tolerance.
+That is 0.005 %. For the manual's explanation to hold, the crystal would have to
+be off by eighty times its own tolerance.
 
 The only instrument that catches this is one outside the chip: a stopwatch
 against sixty seconds of serial output.
@@ -277,9 +285,11 @@ lds  r24, COUNTER+2
 lds  r25, COUNTER+3
 ```
 
-[*Fill in: paste the real `avr-objdump -d` at `opt-level = "s"`. Both outcomes
-are worth showing — the four loads intact, or the load hoisted, depending on
-what LLVM did that day.*]
+That listing is what the calling convention and the instruction set require, not
+a disassembly I am holding up as evidence. What a particular build emits is
+LLVM's choice on the day: it may keep the four loads, reorder them, or lift the
+whole read out of a loop and never repeat it. Nothing in the source constrains
+which — and that, rather than the interleaving, turns out to be the argument.
 
 ## What 511 looks like
 
@@ -606,7 +616,7 @@ if (now.wrapping_sub(deadline) as i32) >= 0 {
 }
 ```
 
-The `last = last.wrapping_add(INTERVAL)` detail matters independently of
+The `last = last.wrapping_add(INTERVAL_MS)` detail matters independently of
 rollover. Writing `last = now` folds each iteration's latency into the next
 period, so the schedule drifts by however late you were, permanently and
 cumulatively. Advancing by the interval keeps the average period exact even when
