@@ -173,6 +173,34 @@ fn find_bundle(dist: &std::path::Path) -> Option<String> {
         })
 }
 
+/// Count the words a human actually reads, which is not the same as the tokens
+/// in the source. Diagrams on this site are authored as inline SVG in the
+/// Markdown so they track the page's type and color tokens — and a single
+/// instrumentation figure carries several hundred whitespace-separated tokens of
+/// coordinates and attributes. Counting those reported an eight-minute article
+/// as twenty, which is worse than no estimate: the reader budgets against it.
+/// Angle-bracket spans are dropped wholesale; nothing between `<` and `>` is
+/// ever prose, and an unclosed `<` at EOF simply ends the count.
+fn prose_words(md: &str) -> usize {
+    let mut depth = 0usize;
+    let stripped: String = md
+        .chars()
+        .map(|c| match c {
+            '<' => {
+                depth += 1;
+                ' '
+            }
+            '>' => {
+                depth = depth.saturating_sub(1);
+                ' '
+            }
+            _ if depth > 0 => ' ',
+            _ => c,
+        })
+        .collect();
+    stripped.split_whitespace().count()
+}
+
 /// Split TOML front matter (`+++ ... +++`) from the Markdown body, render it.
 fn parse(slug: &str, raw: &str, ss: &SyntaxSet) -> Option<Article> {
     let rest = raw.strip_prefix("+++")?;
@@ -182,7 +210,7 @@ fn parse(slug: &str, raw: &str, ss: &SyntaxSet) -> Option<Article> {
         return None;
     }
     let md = rest[end + 3..].trim_start();
-    let words = md.split_whitespace().count();
+    let words = prose_words(md);
     let minutes = (words / 200).max(1);
     let (body, toc) = render(md, ss);
     Some(Article {
@@ -560,7 +588,9 @@ fn slug(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{article_css, render_tags, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS};
+    use super::{
+        article_css, prose_words, render_tags, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS,
+    };
 
     const DESIGN_SYSTEM_PROSE_CSS: &str =
         include_str!("../../../design-system/src/components/Prose/Prose.css");
@@ -630,6 +660,24 @@ mod tests {
         assert!(css.contains(".toc ul { column-count: 2; column-gap: 2rem;"));
         assert!(css.contains(".toc li { break-inside: avoid;"));
         assert!(css.contains("@media (max-width: 40rem) { .toc ul { column-count: 1; } }"));
+    }
+
+    /// Reading time must reflect prose. An inline-SVG figure is mostly markup,
+    /// so counting raw tokens inflates the estimate without bound as diagrams
+    /// are added — the failure mode that made a rewrite read as "20 min".
+    #[test]
+    fn reading_time_counts_prose_and_not_inline_markup() {
+        assert_eq!(prose_words("one two three"), 3);
+        // Attributes and coordinates vanish; the handful of words a diagram
+        // renders as visible labels stay, because a reader does read those.
+        assert_eq!(
+            prose_words("before <svg viewBox=\"0 0 620 168\"><text x=\"0\">L</text></svg> after"),
+            3
+        );
+        // An unterminated tag consumes the rest rather than leaking attributes.
+        assert_eq!(prose_words("kept <rect x=\"92\" width=\"100\""), 1);
+        // Inline code and prose punctuation are untouched.
+        assert_eq!(prose_words("a `u32` is four bytes"), 5);
     }
 
     #[test]

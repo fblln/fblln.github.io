@@ -117,4 +117,18 @@ article h2[id], article h3[id] { scroll-margin-top: calc(64px + 1.5rem); }
 footer.site { border-top: 1px solid var(--line); padding: 1.5rem clamp(1rem, 4vw, 2rem); font: 500 0.72rem/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 footer.site a { text-decoration: none; }
 
+/* Instrumentation figures. Diagrams are authored as inline SVG in the Markdown
+   so they inherit the page's type and color tokens instead of shipping a raster
+   that goes stale the moment a token changes — and so a re-measurement is a
+   diff, not a re-export. SVG text uses var(--font-mono) via presentation
+   attributes, which is why no font-family is set here. */
+figure.diagram { margin: 2.2rem 0; }
+figure.diagram svg { display: block; width: 100%; height: auto; overflow: visible; }
+figure.diagram figcaption {
+  margin-top: 0.9rem;
+  font: 400 0.85rem/1.55 var(--font-sans);
+  color: var(--muted);
+}
+figure.diagram figcaption code { font-family: var(--font-mono); font-size: 0.9em; }
+
 /* ---- syntect code-block token colors appended below ---- */
