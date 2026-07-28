@@ -17,7 +17,7 @@ instrument, precisely because nothing on it is wide enough to hide behind.
 This is Lab 4 of a thirteen-lab bare-metal Rust curriculum I am building by
 working through it first: `millis()`, and the justification of its critical
 section from Rust's abstract machine rather than from convention. Writing it up
-found a bug in my own solution code, which is the best argument I have for
+found two bugs in my own solution code, which is the best argument I have for
 writing things up.
 
 ## Provenance, before anything else
@@ -688,17 +688,28 @@ the diff at that point rather than to pretend the earlier code was always right.
 
 ## What the small machine is for
 
-Three defects, and only one is the one in the title.
+Three defects, and the one in the title is the one least likely to ever show
+itself.
 
-The torn read is real, derivable, and almost certainly not reproducible on
-demand. The undefined behaviour cannot be reproduced on demand *by definition* —
-that is what the word means. The off-by-one reproduces perfectly on every single
-run and still needs an instrument outside the chip to notice, because inside the
-chip everything is self-consistent.
+The off-by-one is perfectly deterministic. It reproduces on every run of every
+build, and it still needs an instrument outside the chip to notice, because
+inside the chip everything agrees with itself: a timer 0.4 % slow tells the same
+wrong time to every line of code that asks.
 
-None of the three is caught by testing the thing it breaks. They are caught by
-knowing what the machine does between the instructions you wrote — and the only
-way I know to acquire that is to work somewhere small enough that "between the
+The unsynchronised counter is neither deterministic nor really about tearing.
+The torn read is its most photogenic symptom and I expect not to see it; the
+load hoisted out of a polling loop is the same defect with no wrong value in it
+anywhere, and a board that simply stops. Neither can be reproduced on demand *by
+definition* — that is what undefined means.
+
+The rollover comparison cannot be reached by a test at all, because its trigger
+is a duration rather than a value. Windows 95 shipped it, a 787 shipped it, and
+so did my own solution code.
+
+None of the three is caught by testing the thing it breaks. Two are caught by
+knowing what the machine does between the instructions you wrote; the third by
+knowing what its arithmetic does when the numbers run out. The only way I know
+to acquire either is to work somewhere small enough that "between the
 instructions" is a place you can point at.
 
 Two kilobytes of SRAM is not a limitation for this. It is the instrument.
