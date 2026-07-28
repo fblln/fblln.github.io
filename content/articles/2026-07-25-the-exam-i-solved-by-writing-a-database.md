@@ -2,7 +2,7 @@
 title = "The Exam I Solved by Writing a Database"
 date = "2026-07-25"
 description = "Handed an 8086 assembly exam and not enough time, I did the thing that looks least rational under pressure: I stopped solving the problem and built an access layer first. It was faster. Years later, Rust on an 8-bit microcontroller made the same argument by force."
-tags = ["Systems", "Assembly", "Rust", "Embedded"]
+tags = ["Systems", "Assembly", "Embedded"]
 +++
 
 The worst place to introduce an abstraction is an exam. There is a clock, there
