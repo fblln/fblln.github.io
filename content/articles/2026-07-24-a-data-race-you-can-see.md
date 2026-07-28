@@ -34,10 +34,9 @@ this writing:
 | Anything about timing on real silicon | **Not yet run.** Zero of thirteen labs are validated on hardware |
 
 That fourth row is the uncomfortable one, and I have left it uncomfortable
-rather than rounding it up to "measured". Every number below that a board could
-contradict is written so that a board can: as a rate, a percentage, or a
-distribution someone with a stopwatch and a logic analyser can go and disagree
-with.
+rather than rounding it up to "measured". Where a number could be contradicted
+by a board, it is stated as a rate or a percentage, so that a stopwatch is
+enough to contradict it.
 
 ## The machine is narrower than the number
 
@@ -128,8 +127,7 @@ for it is 249. Write 250 and the timer counts 251:
 error = 1 − 996.016/1000         →  0.398 %  →  239 ms slow per minute
 ```
 
-The correction is to keep the constant as the divisor it is and subtract the one
-the hardware adds back:
+The constant stays the divisor; the register gets one less than it:
 
 ```rust
 tc0.ocr0a().write(|w| w.set((TIMER_COUNTS - 1) as u8));   // 249, for 250 counts
@@ -286,10 +284,10 @@ lds  r25, COUNTER+3
 ```
 
 That listing is what the calling convention and the instruction set require, not
-a disassembly I am holding up as evidence. What a particular build emits is
-LLVM's choice on the day: it may keep the four loads, reorder them, or lift the
-whole read out of a loop and never repeat it. Nothing in the source constrains
-which — and that, rather than the interleaving, turns out to be the argument.
+a disassembly of a build I have in front of me. What a given build emits is
+LLVM's decision: the four loads may survive, or the whole read may be lifted out
+of a loop and never repeated. The source does not constrain the choice, and that
+is the more important half of the argument.
 
 ## What 511 looks like
 
@@ -361,7 +359,7 @@ the failure distribution exactly.
 <figcaption>The severity gate is the interesting one. A tick landing mid-read that only touches the low byte yields a value one millisecond out of date — invisible, harmless, and overwhelmingly the common case. The carry is what turns a stale read into a false one.</figcaption>
 </figure>
 
-Three caveats a reviewer should press on, because the model is not the territory:
+Three caveats a reviewer should press on, because the model is not the board:
 
 **The window is not exactly 8 cycles.** Tearing requires the tick to fall
 *between* the first and last load, which is three inter-instruction boundaries,
@@ -377,7 +375,7 @@ this bug reproduces on one build and vanishes on the next.
 a fortnight or once an hour depending on how often the caller asks. The failure
 frequency is set by code that has never read this file.
 
-And then the honest part, which I would rather report than omit: when I build
+And then the honest part: when I build
 the `static mut` version to watch it fail, I expect it not to. At `opt-level =
 "s"` on a current toolchain the loads may well come out intact and the counter
 may read correctly for as long as anyone is willing to watch. The incorrect
@@ -385,8 +383,8 @@ program passes.
 
 ## The race is not the bug
 
-That expected non-failure is the intellectually important part of the lab, and
-it is where a hardware-only explanation stops being sufficient.
+That expected non-failure is the important part of the lab, and it is where a
+hardware-only explanation stops being sufficient.
 
 Two contexts accessing the same non-atomic location without synchronisation,
 where at least one writes, is a data race, and a data race is undefined
@@ -701,25 +699,24 @@ the diff at that point rather than to pretend the earlier code was always right.
 Three defects, and the one in the title is the one least likely to ever show
 itself.
 
-The off-by-one is perfectly deterministic. It reproduces on every run of every
-build, and it still needs an instrument outside the chip to notice, because
-inside the chip everything agrees with itself: a timer 0.4 % slow tells the same
-wrong time to every line of code that asks.
+The off-by-one is deterministic. It reproduces on every run of every build, and
+it still needs an instrument outside the chip to notice, because inside the chip
+everything agrees with itself: a timer 0.4 % slow tells the same wrong time to
+every line of code that asks.
 
-The unsynchronised counter is neither deterministic nor really about tearing.
-The torn read is its most photogenic symptom and I expect not to see it; the
-load hoisted out of a polling loop is the same defect with no wrong value in it
-anywhere, and a board that simply stops. Neither can be reproduced on demand *by
-definition* — that is what undefined means.
+The unsynchronised counter is not deterministic, and not really about tearing.
+The torn read is its most visible symptom and I expect not to see it; the
+hoisted load is the same defect with no wrong value in it anywhere. Neither can
+be reproduced on demand, which is what undefined means.
 
-The rollover comparison cannot be reached by a test at all, because its trigger
-is a duration rather than a value. Windows 95 shipped it, a 787 shipped it, and
-so did my own solution code.
+The rollover comparison has no input a test can supply, because its trigger is a
+duration. Windows 95 shipped it, a 787 shipped it, and so did my own solution
+code.
 
-None of the three is caught by testing the thing it breaks. Two are caught by
-knowing what the machine does between the instructions you wrote; the third by
-knowing what its arithmetic does when the numbers run out. The only way I know
-to acquire either is to work somewhere small enough that "between the
-instructions" is a place you can point at.
+None of the three is caught by testing the thing it breaks. Two need you to know
+what the machine does between the instructions you wrote; the third, what its
+arithmetic does when the numbers run out. The only way I know to acquire either
+is to work somewhere small enough that "between the instructions" is a place you
+can point at.
 
 Two kilobytes of SRAM is not a limitation for this. It is the instrument.
