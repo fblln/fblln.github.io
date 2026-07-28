@@ -1,7 +1,7 @@
 +++
 title = "A Data Race You Can See"
-date = "2026-07-24"
-description = "A u32 on an 8-bit CPU is four load instructions, and an interrupt landing between two of them returns a number that was never in memory. Lab 4 of a bare-metal Rust curriculum: the CTC off-by-one hiding in my own solution code, why the compiler is entitled to break this even when the race never fires."
+date = "2026-07-28"
+description = "A u32 on an 8-bit CPU is four load instructions, and an interrupt landing between two of them returns a number that was never in memory. The CTC off-by-one hiding in code I had already written and believed, why the compiler is entitled to break this even when the race never fires."
 tags = ["Rust", "Embedded", "Concurrency"]
 +++
 
@@ -14,29 +14,29 @@ So I went looking for a machine narrow enough to show me one. An Arduino Uno R3
 — ATmega328P, 8-bit, 16 MHz, 2 KB of SRAM — turns out to be an excellent
 instrument, precisely because nothing on it is wide enough to hide behind.
 
-This is Lab 4 of a thirteen-lab bare-metal Rust curriculum I am building by
-working through it first: `millis()`, and the justification of its critical
-section from Rust's abstract machine rather than from convention. Writing it up
-found two bugs in my own solution code, which is the best argument I have for
-writing things up.
+What follows is `millis()` — a millisecond counter maintained by a timer
+interrupt — and the justification of its critical section from Rust's abstract
+machine rather than from convention. Writing it up found two bugs in code I had
+already written and believed, which is the best argument I have for writing
+things up.
 
 ## Provenance, before anything else
 
-The curriculum's organising rule is *no claim without a measurement*, so this
-article has to declare where its numbers come from before it uses any. As of
-this writing:
+The rule I hold myself to is *no claim without a measurement*, so this article
+has to declare where its numbers come from before it uses any. As of this
+writing:
 
 | Claim | Status |
 |---|---|
 | Instruction counts, cycle costs, register semantics | ATmega328P datasheet — primary source |
 | The CTC period arithmetic | Derivation, shown in full below |
 | Tear probability, carry frequencies | Model, from the above |
-| Anything about timing on real silicon | **Not yet run.** Zero of thirteen labs are validated on hardware |
+| Anything about timing on real silicon | **Not yet run.** Nothing here has been checked against a board |
 
 That fourth row is the uncomfortable one, and I have left it uncomfortable
-rather than rounding it up to "measured". Where a number could be contradicted
-by a board, it is stated as a rate or a percentage, so that a stopwatch is
-enough to contradict it.
+rather than rounding it up to "measured". Where a board could contradict a
+number, that number is given as a rate or a percentage, so a stopwatch is enough
+to settle it.
 
 ## The machine is narrower than the number
 
@@ -76,7 +76,7 @@ Hold on to the last line. Not "the read is slow": the read *has no single
 instant*. It has four, and anything that runs between them observes a different
 machine than the one the read started in.
 
-## The timer, and the off-by-one in my own solution
+## The timer, and the off-by-one in my own code
 
 Blocking is the naive way to measure time and it fails the moment two things
 must happen at once — `delay_ms` doesn't pause an LED, it pauses the core. The
@@ -137,10 +137,10 @@ I like this bug more than the data race. It is one character. It lives in a line
 that reads correctly out loud, under a comment that is genuinely true. It
 survives every test that asserts the counter increments, because the counter
 does increment. And 0.4 % is close enough to plausible clock error that my own
-lab manual's expected-results table waves at it and calls it *crystal-limited* —
-which cannot be right, because an Uno R3's 16 MHz crystal is a ±50 ppm part.
-That is 0.005 %. For the manual's explanation to hold, the crystal would have to
-be off by eighty times its own tolerance.
+notes wave at it and call it *crystal-limited* — which cannot be right, because
+an Uno R3's 16 MHz crystal is a ±50 ppm part. That is 0.005 %. For that
+explanation to hold, the crystal would have to be off by eighty times its own
+tolerance.
 
 The only instrument that catches this is one outside the chip: a stopwatch
 against sixty seconds of serial output.
@@ -234,15 +234,15 @@ while every register in the diagram above is correct.
 
 ## What claiming TC0 costs the rest of the system
 
-Worth stating early because it constrains twelve later labs: on an ATmega328P
-there are three timers, and `millis()` has just taken one.
+Worth stating early, because it constrains everything the board does later: on
+an ATmega328P there are three timers, and `millis()` has just taken one.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 152" role="img" aria-label="Timer allocation across the curriculum: TC0 claimed by millis, TC1 reserved for servo output, TC2 available for PWM experiments">
+<svg viewBox="0 0 620 152" role="img" aria-label="Timer allocation on the ATmega328P: TC0 claimed by millis, TC1 reserved for servo output, TC2 available for PWM experiments">
   <g font-family="var(--font-mono)" font-size="9">
     <text x="0" y="24" font-size="10" fill="var(--muted)">TC0</text>
     <rect x="92" y="10" width="330" height="22" fill="#ff3b00"/>
-    <text x="257" y="25" fill="#f2f0e9" text-anchor="middle">millis() &middot; CTC &middot; 1 kHz &middot; claimed lab 4</text>
+    <text x="257" y="25" fill="#f2f0e9" text-anchor="middle">millis() &middot; CTC &middot; 1 kHz &middot; spent here</text>
     <text x="432" y="25" fill="var(--muted)">collateral: D5 / D6 PWM gone</text>
     <text x="0" y="66" font-size="10" fill="var(--muted)">TC1</text>
     <rect x="92" y="52" width="330" height="22" fill="none" stroke="var(--line)"/>
@@ -254,9 +254,9 @@ there are three timers, and `millis()` has just taken one.
     <text x="432" y="109" fill="var(--muted)">use this, not D9</text>
   </g>
   <line x1="0" y1="130" x2="620" y2="130" stroke="var(--line)"/>
-  <text x="0" y="146" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">three timers, thirteen labs &mdash; allocation is a design decision made once, in week 4</text>
+  <text x="0" y="146" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">three timers on the chip &mdash; allocation is a design decision you make once, early</text>
 </svg>
-<figcaption>The reason TC1 is ring-fenced: the HAL's <code>simple_pwm</code> exposes fixed prescalers landing near 30, 122 and 490 Hz. None of those is the 50 Hz a hobby servo needs, so the servo lab has to drive TC1 raw — and it cannot do that if an earlier lab spent it.</figcaption>
+<figcaption>The reason TC1 is ring-fenced: the HAL's <code>simple_pwm</code> exposes fixed prescalers landing near 30, 122 and 490 Hz. None of those is the 50 Hz a hobby servo needs, so driving a servo means programming TC1 raw — which is impossible if something else has already spent it.</figcaption>
 </figure>
 
 ## The version everyone writes first
@@ -270,8 +270,8 @@ fn TIMER0_COMPA() { unsafe { COUNTER += 1; } }
 fn millis() -> u32 { unsafe { COUNTER } }
 ```
 
-The objection writes itself, and students make it every time: single core, no
-threads, the handler is a handful of instructions. What is there to interleave?
+The objection writes itself, and everyone makes it: single core, no threads, the
+handler is a handful of instructions. What is there to interleave?
 
 The four loads. On AVR a `u32` return value comes back in `r22:r25`, and filling
 that quad is four `lds` — two words and two cycles each:
@@ -383,7 +383,7 @@ program passes.
 
 ## The race is not the bug
 
-That expected non-failure is the important part of the lab, and it is where a
+That expected non-failure is the important part, and it is where a
 hardware-only explanation stops being sufficient.
 
 Two contexts accessing the same non-atomic location without synchronisation,
@@ -393,8 +393,7 @@ undefined at the moment two accesses happen to overlap. It is undefined as
 written, and the optimiser has already made decisions on the assumption that it
 never happens.
 
-Two precisions that are easy to get wrong, and that I had wrong in my own
-instructor notes:
+Two precisions that are easy to get wrong, and that I had wrong in my own notes:
 
 **It is not about `&mut`.** The usual formulation — "taking `&mut` to a `static
 mut` violates uniqueness" — does not describe this code, which never forms a
@@ -432,8 +431,8 @@ for it to reject. The UB is the unsynchronised access itself.
 So the argument for the critical section is not that the race is probable. It is
 that the miscompilation is licensed regardless of probability, and licensed by
 the type system rather than by the hardware. That distinction is the difference
-between a student who avoids `static mut` because they were told to and one who
-can say what the compiler is promising in exchange.
+between avoiding `static mut` because you were told to and being able to say
+what the compiler is promising in exchange.
 
 ## The fix, and what each token costs
 
@@ -495,7 +494,7 @@ UB whether or not the hardware could have torn it.
 ## The other bug, which is not a concurrency bug at all
 
 Everything above concerns *writing* the counter safely. This section is about
-reading it, and it is where I found the second defect in my own lab solution.
+reading it, and it is where I found the second defect in my own code.
 Here is the main loop as it ships:
 
 ```rust
@@ -647,11 +646,11 @@ reads as negative). It is a *half-range* test:
 <figcaption>The trick buys rollover-correctness at the price of a bounded lateness assumption. For a 1 ms scheduler polled in a tight loop that bound is absurdly generous; for a task that sleeps for weeks it is a real constraint, and it should be written down rather than assumed.</figcaption>
 </figure>
 
-My own instructor manual writes this as `diff < u32::MAX / 2`, which is the same
+My own notes write this as `diff < u32::MAX / 2`, which is the same
 test off by a single millisecond every 24.85 days — `u32::MAX / 2` is
 `i32::MAX`, and the `<` excludes the one value the signed form includes. It has
-never mattered and never will. I mention it because the alternative is a
-curriculum that teaches an idiom nobody has checked.
+never mattered and never will. I mention it because the alternative is
+repeating an idiom nobody has checked.
 
 ### Why it never shows up in testing
 
@@ -689,11 +688,6 @@ power the aircraft down before it got there.
 Both are the defect at the top of this section. Neither was found by testing;
 both were found in service, by the passage of time.
 
-I have left the naive version in my lab-4 solution rather than quietly patching
-it, because lab 6 introduces the wrapping form and its manual notes that *most
-students write the naive comparison*. Mine did too. The honest fix is to teach
-the diff at that point rather than to pretend the earlier code was always right.
-
 ## What the small machine is for
 
 Three defects, and the one in the title is the one least likely to ever show
@@ -710,8 +704,7 @@ hoisted load is the same defect with no wrong value in it anywhere. Neither can
 be reproduced on demand, which is what undefined means.
 
 The rollover comparison has no input a test can supply, because its trigger is a
-duration. Windows 95 shipped it, a 787 shipped it, and so did my own solution
-code.
+duration. Windows 95 shipped it, a 787 shipped it, and so did I.
 
 None of the three is caught by testing the thing it breaks. Two need you to know
 what the machine does between the instructions you wrote; the third, what its
