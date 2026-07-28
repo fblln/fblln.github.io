@@ -1,8 +1,8 @@
 +++
 title = "The Exam I Solved by Writing a Database"
 date = "2026-07-25"
-description = "Handed an assembly exam and not enough time, I did the thing that looks least rational under pressure: I stopped solving the problem and built an access layer first. It was faster. Years later, Rust on an 8-bit microcontroller made the same argument by force."
-tags = ["Systems", "Rust", "Embedded"]
+description = "Handed an 8086 assembly exam and not enough time, I did the thing that looks least rational under pressure: I stopped solving the problem and built an access layer first. It was faster. Years later, Rust on an 8-bit microcontroller made the same argument by force."
+tags = ["Systems", "Assembly", "Rust", "Embedded"]
 +++
 
 The worst place to introduce an abstraction is an exam. There is a clock, there
@@ -10,8 +10,8 @@ is no second attempt, and every minute spent on structure is a minute not spent
 on the thing being marked. The rational move is to write the shortest code that
 produces the right answer and get out.
 
-I did the opposite once, in an assembly exam, and it is still one of the more
-useful things I have learned about software.
+I did the opposite once, in an 8086 assembly exam, and it is still one of the
+more useful things I have learned about software.
 
 ## The problem
 
@@ -19,11 +19,21 @@ The task was the usual shape: a block of memory holding records, and a set of
 operations over them — insert, search, delete, report. Nothing conceptually
 hard. In a language with structs it is twenty minutes of work.
 
-In assembly there are no records. There is a base address, and there are
-offsets, and the meaning of any given byte lives entirely in your head. Reading
-a field is a computation: take the base, multiply the index by the record
-stride, add the offset of the field you want, load. Writing it is the same
-computation again, in reverse.
+On an 8086 there are no records. There is a segment, an offset inside it, and a
+stride you carry in your head. Reading a field is a computation: multiply the
+index by the record size, add the offset of the field you want, add the base,
+and load — through a register the addressing mode will actually accept.
+
+That last clause is the one that hurts. The 8086 builds an effective address out
+of BX or BP, plus SI or DI, plus a constant, and out of nothing else. AX, CX and
+DX can hold a number perfectly well and cannot address memory with it. Nor is
+there any scaling — `[BX+SI*4]` is a 386 instruction and this was not a 386 — so
+a record size that is not a power of two means an explicit multiply.
+
+The multiply is where tedious turns dangerous. `MUL` with a 16-bit operand does
+not put its result where you ask for it. It puts it in DX:AX, whether or not DX
+was holding something you still needed. There are four general registers on this
+machine, and the instruction that finds a record takes two of them.
 
 Do that inline, at every use site, under time pressure.
 
@@ -34,8 +44,10 @@ silent*.
 
 Every operation I wrote recomputed the same offsets by hand. Each one was an
 opportunity to use the wrong stride, or the right stride with the wrong field
-offset, or to clobber a register holding the base address three instructions
-before I needed it again. None of those mistakes announce themselves. The
+offset, or to leave something in DX that the next `MUL` quietly overwrote, or to
+write `[BP+SI]` where I meant `[BX+SI]` — which assembles cleanly and reads the
+stack segment instead of the data segment, because BP defaults to SS. None of
+those mistakes announce themselves. The
 program runs. It produces a number. The number is wrong in a way that looks like
 a logic error somewhere else entirely.
 
@@ -45,7 +57,7 @@ because I was debugging the same class of mistake repeatedly, and each instance
 looked new.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 168" role="img" aria-label="Diagram contrasting inline offset arithmetic repeated at every use site with a single accessor layer that all operations call through">
+<svg viewBox="0 0 620 168" role="img" aria-label="Diagram contrasting 8086 offset arithmetic repeated at every use site with a single accessor layer that all operations call through">
   <text x="0" y="14" font-family="var(--font-mono)" font-size="10" fill="var(--muted)">INLINE</text>
   <g font-family="var(--font-mono)" font-size="9">
     <rect x="92" y="4" width="104" height="22" fill="none" stroke="var(--line)"/><text x="144" y="19" fill="var(--ink)" text-anchor="middle">insert</text>
@@ -58,8 +70,8 @@ looked new.
     <line x1="368" y1="26" x2="368" y2="52"/><line x1="480" y1="26" x2="480" y2="52"/>
   </g>
   <g font-family="var(--font-mono)" font-size="8" fill="#ff3b00" text-anchor="middle">
-    <text x="144" y="64">base+i*S+off</text><text x="256" y="64">base+i*S+off</text>
-    <text x="368" y="64">base+i*S+off</text><text x="480" y="64">base+i*S+off</text>
+    <text x="144" y="64">MUL &middot; [BX+SI]</text><text x="256" y="64">MUL &middot; [BX+SI]</text>
+    <text x="368" y="64">MUL &middot; [BX+SI]</text><text x="480" y="64">MUL &middot; [BX+SI]</text>
   </g>
   <text x="92" y="82" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">four places to get it wrong, silently</text>
   <line x1="0" y1="100" x2="620" y2="100" stroke="var(--line)"/>
@@ -73,7 +85,7 @@ looked new.
   <path d="M144 134 L144 146 L480 146 L480 134" fill="none" stroke="var(--muted)" stroke-width="1"/>
   <path d="M256 134 L256 146 M368 134 L368 146" stroke="var(--muted)" stroke-width="1"/>
   <rect x="248" y="146" width="128" height="20" fill="#ff3b00"/>
-  <text x="312" y="160" font-family="var(--font-mono)" font-size="9" fill="#f2f0e9" text-anchor="middle">get_field / put_field</text>
+  <text x="312" y="160" font-family="var(--font-mono)" font-size="9" fill="#f2f0e9" text-anchor="middle">GetField / PutField</text>
 </svg>
 <figcaption>The same arithmetic either lives at four call sites or at one. Only one of those versions can be fixed once.</figcaption>
 </figure>
@@ -82,8 +94,11 @@ looked new.
 
 So I stopped, with the clock running, and wrote a handful of subroutines that
 did nothing interesting: given a record index and a field, compute the address.
-Load it. Store it. A convention for which register held the base, which held the
-index, and which came back with the value.
+Load it. Store it. And, mattering more than the code, four lines of convention
+at the top of the file: BX holds the base of the table, SI holds the record
+index, the field offset arrives as a constant, the value comes back in AX — and
+nothing may be live in DX across one of these calls, because `MUL` is going to
+take it.
 
 It felt like the wrong call while I was doing it. I was writing code that would
 not be marked, in an exam where I was already behind.
@@ -126,8 +141,9 @@ yourself.
 ## The same argument, made by a compiler
 
 Years later I started writing Rust for an ATmega328P: 8 bit, 16 MHz, 2 KB of
-RAM. As constrained as anything I have touched since that exam, and the same
-temptation — it is small, just poke the registers.
+RAM. As constrained as anything I have touched since that exam — three pointer
+registers, and only two of them take a displacement — and the same temptation:
+it is small, just poke the registers.
 
 Rust will not let you, and the way it refuses is precisely the lesson.
 
