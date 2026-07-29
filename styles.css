@@ -218,7 +218,9 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
 @media (max-width: 680px) {
   .section-grid { grid-template-columns: 38px minmax(0, 1fr); }
   .section-index { padding-left: 0.65rem; }
-  .hero h1 { font-size: clamp(2.3rem, 12vw, 5.8rem); }
+  /* ponytail: sized so the longest word ("PRODUCTION." ≈ 6.9em at weight 900)
+     always fits the hero column — 70px is the section-index gutter plus padding. */
+  .hero h1 { font-size: min(5.8rem, calc((100vw - 70px) / 6.9)); }
   .runtime-facts span { flex: 1 1 auto; min-width: 0; padding: 0.55rem 0.6rem; }
   .hero-bottom, .section-heading { grid-template-columns: 1fr; }
   .hero-actions { justify-content: flex-start; }
