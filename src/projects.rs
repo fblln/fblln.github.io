@@ -22,34 +22,19 @@ pub(crate) struct Project {
 
 pub(crate) const PROJECTS: [Project; 4] = [
     Project {
-        slug: "race-telemetry",
-        name: "Race Telemetry Workbench",
-        category: "Telemetry",
-        stack: ".NET · TIMESCALEDB · MCP · AI",
-        statement: "Turn raw Formula 1 telemetry into engineering and race-strategy insight.",
-        evidence: "A local-first analysis platform with replay, strategy, race control, head-to-head comparison, and an MCP-backed AI surface.",
-        detail: "FastF1 data is imported into TimescaleDB and exposed through typed .NET query primitives. The same bounded contracts power an engineering desktop and autonomous analysis through MCP—keeping natural-language answers grounded in real session data.",
-        metric: "42.7×",
-        metric_label: "raw telemetry compression",
-        image: "/assets/race-telemetry.webp",
-        image_alt: "Race Telemetry Workbench replay interface",
-        repo: "https://github.com/fblln/race-telemetry-workbench",
-        tags: &["F1", "PostgreSQL", "OpenTelemetry", "Agents"],
-    },
-    Project {
-        slug: "lithograph",
-        name: "Lithograph",
-        category: "Code Intelligence",
-        stack: "RUST · TREE-SITTER · LADYBUGDB · MCP",
-        statement: "Turn a source tree into a queryable, evidence-backed architecture graph.",
-        evidence: "29 typed relations, 25 MCP tools, hybrid language resolution, drift detection, ADRs, and offline-first architecture documentation.",
-        detail: "Lithograph treats repository understanding as a deterministic systems problem rather than a prompt. It combines syntax extraction, typed graph construction, search, architecture analysis, evidence tracking, incremental regeneration, and optional model augmentation.",
-        metric: "29",
-        metric_label: "typed relation kinds",
-        image: "",
-        image_alt: "",
-        repo: "https://github.com/fblln/Lithograph",
-        tags: &["Rust", "Graphs", "Local-first", "Code Intelligence"],
+        slug: "slim2m",
+        name: "slim2m",
+        category: "Embedded",
+        stack: "RUST · LWM2M · COAP · NO_STD",
+        statement: "Run an LwM2M client from Linux-class devices down to bare-metal microcontrollers.",
+        evidence: "",
+        detail: "slim2m separates the LwM2M and CoAP state machines from sockets, clocks, entropy, and storage. The core performs no I/O and owns no payload buffers; the hosted runtime connects it to UDP and DTLS today, with no-OS runtime support planned.",
+        metric: "0",
+        metric_label: "heap allocations in the core",
+        image: "/assets/slim2m-protocol-map.webp",
+        image_alt: "Detailed protocol map showing a sensor, microcontroller, gateway, and server connected by packet flows above a four-state device lifecycle",
+        repo: "https://github.com/fblln/slim2m",
+        tags: &["Rust", "Embedded", "LwM2M", "no_std"],
     },
     Project {
         slug: "ridgeline",
@@ -60,26 +45,41 @@ pub(crate) const PROJECTS: [Project; 4] = [
         evidence: "A real asset pipeline for DEM sampling, projected geometry, terrain textures, route replay, and 7200×5400 export.",
         detail: "Ridgeline combines a high-performance geospatial pipeline with a browser-native viewer. Instead of hiding the work, it exposes each stage: GPX parsing, DEM acquisition, sampling, relief, slope, forest layers, and final asset handoff.",
         metric: "6.7×",
-        metric_label: "warm-cache compute speedup",
+        metric_label: "warm-cache CPU vs the Python baker, same GDAL underneath",
         image: "/assets/ridgeline.webp",
         image_alt: "Ridgeline 3D terrain visualization",
         repo: "https://github.com/fblln/ridgeline",
         tags: &["Rust", "WASM", "Terrain", "GPX"],
     },
     Project {
-        slug: "apexline",
-        name: "Apexline",
-        category: "Research",
-        stack: "PYTHON · FASTF1 · GEOMETRY · POLYLINES",
-        statement: "Prove whether a telemetry lap has the same shape as an oracle circuit.",
-        evidence: "26,689 race laps inspected across 24 circuits with auditable recovery, rejection, fitting, and compact polyline output.",
-        detail: "Apexline normalizes lap-boundary overlap, rejects invalid evidence, fits closed paths without arbitrary warping, and reports residuals that explain whether each lap is useful, recoverable, suspicious, or invalid.",
-        metric: "93.7%",
-        metric_label: "2025 laps classified good",
-        image: "/assets/apexline.svg",
-        image_alt: "Apexline Canadian Grand Prix geometry diagnostics",
-        repo: "https://github.com/fblln/apexline",
-        tags: &["Geometry", "F1", "Validation", "Compression"],
+        slug: "lithograph",
+        name: "Lithograph",
+        category: "Code Intelligence",
+        stack: "RUST · TREE-SITTER · CYPHER · MCP",
+        statement: "Turn a source tree into a queryable, evidence-backed architecture graph.",
+        evidence: "29 typed relations and 25 MCP tools over a versioned graph snapshot, with hybrid semantic retrieval and incremental reindexing.",
+        detail: "No model key required: scans, graph construction, and every query run offline and reproducible. `update` reindexes only what changed, and each generated page stays tied to source evidence rather than a prompt.",
+        metric: "29",
+        metric_label: "typed relation kinds",
+        image: "",
+        image_alt: "",
+        repo: "https://github.com/fblln/Lithograph",
+        tags: &["Rust", "Graphs", "Local-first", "Code Intelligence"],
+    },
+    Project {
+        slug: "race-telemetry",
+        name: "Race Telemetry Workbench",
+        category: "Telemetry",
+        stack: ".NET · MCP · AG-UI · TIMESCALEDB",
+        statement: "Serve a race session as a time-series store that both charts and agents can query.",
+        evidence: "TimescaleDB behind typed REST for the views and MCP for the agent, with answers streamed back over SSE.",
+        detail: "Seven analysis primitives are compiled to hypertable queries and exposed twice—REST to the desktop, MCP to the agent—so a question never pulls raw telemetry across the wire.",
+        metric: "7",
+        metric_label: "primitives, one query layer",
+        image: "/assets/race-telemetry-ai.webp",
+        image_alt: "A streaming assistant comparing the pit strategies of the top three finishers, beside a generated race summary with winner, fastest lap, tyre stints, and race control timeline",
+        repo: "https://github.com/fblln/race-telemetry-workbench",
+        tags: &["F1", "MCP", "Agents", "OpenTelemetry"],
     },
 ];
 
@@ -88,7 +88,7 @@ pub(crate) const CATEGORIES: [&str; 5] = [
     "Telemetry",
     "Code Intelligence",
     "Geospatial",
-    "Research",
+    "Embedded",
 ];
 
 /// A project matches when its category is selected and the query is present in
@@ -124,17 +124,17 @@ mod tests {
     }
 
     #[test]
-    fn every_project_has_evidence_and_a_repository() {
+    fn every_project_has_a_repository() {
         for project in PROJECTS {
-            assert!(!project.evidence.is_empty());
             assert!(project.repo.starts_with("https://github.com/fblln/"));
         }
     }
 
     #[test]
     fn filtering_covers_category_stack_and_tags() {
-        assert!(matches(PROJECTS[1], "Code Intelligence", "tree-sitter"));
-        assert!(matches(PROJECTS[2], "All", "wasm"));
-        assert!(!matches(PROJECTS[0], "Research", "telemetry"));
+        assert!(matches(PROJECTS[2], "Code Intelligence", "tree-sitter"));
+        assert!(matches(PROJECTS[1], "All", "wasm"));
+        assert!(matches(PROJECTS[0], "Embedded", "lwm2m"));
+        assert!(!matches(PROJECTS[3], "Embedded", "telemetry"));
     }
 }

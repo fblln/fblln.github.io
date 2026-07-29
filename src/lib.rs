@@ -239,7 +239,7 @@ pub fn App() -> impl IntoView {
                     <div>
                         <div class="section-heading"><div><p class="eyebrow">"WHAT I WORK WITH"</p><h2>"THE STACK"</h2></div><p>"Eight years across languages, cloud platforms, and the messaging and observability tooling that keeps distributed systems fast, traceable, and honest."</p></div>
                         <div class="capability-grid">
-                            <article><h3>"LANGUAGES"</h3><div class="cap-tags"><span>"Java"</span><span>"TypeScript"</span><span>"Python"</span><span>"C#"</span><span>"SQL"</span></div></article>
+                            <article><h3>"LANGUAGES"</h3><div class="cap-tags"><span>"Java"</span><span>"TypeScript"</span><span>"Rust"</span><span>"Python"</span><span>"SQL"</span></div></article>
                             <article><h3>"BACKEND"</h3><div class="cap-tags"><span>"Spring Boot"</span><span>"Quarkus"</span><span>"REST APIs"</span><span>"Event-Driven Architecture"</span><span>"API Design"</span></div></article>
                             <article><h3>"CLOUD & INFRASTRUCTURE"</h3><div class="cap-tags"><span>"AWS"</span><span>"Kubernetes"</span><span>"Docker"</span><span>"Serverless"</span><span>"Linux"</span></div></article>
                             <article><h3>"DATA & MESSAGING"</h3><div class="cap-tags"><span>"Kafka"</span><span>"Kinesis"</span><span>"SQS"</span><span>"MongoDB"</span><span>"DynamoDB"</span><span>"S3"</span></div></article>
@@ -371,8 +371,8 @@ pub fn App() -> impl IntoView {
                         <p class="case-statement">{move || expanded.get().map(|index| PROJECTS[index].statement).unwrap_or("")}</p>
                         <div class="case-metric"><strong>{move || expanded.get().map(|index| PROJECTS[index].metric).unwrap_or("")}</strong><span>{move || expanded.get().map(|index| PROJECTS[index].metric_label).unwrap_or("")}</span></div>
                         <p>{move || expanded.get().map(|index| PROJECTS[index].detail).unwrap_or("")}</p>
-                        <blockquote>{move || expanded.get().map(|index| PROJECTS[index].evidence).unwrap_or("")}</blockquote>
-                        <div class="case-visual" class:graph=move || expanded.get() == Some(1)>
+                        <blockquote class:hidden=move || expanded.get().map(|index| PROJECTS[index].evidence.is_empty()).unwrap_or(true)>{move || expanded.get().map(|index| PROJECTS[index].evidence).unwrap_or("")}</blockquote>
+                        <div class="case-visual" class:graph=move || expanded.get().map(|index| PROJECTS[index].slug == "lithograph").unwrap_or(false)>
                             <img
                                 class:hidden=move || expanded.get().map(|index| PROJECTS[index].image.is_empty()).unwrap_or(true)
                                 src=move || expanded.get().map(|index| PROJECTS[index].image).unwrap_or("")
