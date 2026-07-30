@@ -50,7 +50,8 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .section-index { padding: var(--pad) 0 0 var(--pad); border-right: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.72rem; }
 .eyebrow { margin: 0 0 1rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; }
 
-.hero { min-height: calc(100vh - 64px); }
+/* ponytail: the hero has no min-height — it is as tall as its content, so the next
+   section peeks above the fold instead of 245px of empty column. */
 .hero-content { display: grid; align-content: start; gap: clamp(1.5rem, 7vh, 5rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
 /* ponytail: 13.8 = width/height ratio of the longest line ("CONTACT WITH PRODUCTION."
    at weight 900) plus ~6% clearance, so the three authored lines never wrap and still
