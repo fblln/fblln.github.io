@@ -51,11 +51,11 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .eyebrow { margin: 0 0 1rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; }
 
 .hero { min-height: calc(100vh - 64px); }
-.hero-content { display: grid; align-content: start; gap: clamp(1.5rem, 4.5vh, 3rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
+.hero-content { display: grid; align-content: start; gap: clamp(1.5rem, 7vh, 5rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
 /* ponytail: 13.8 = width/height ratio of the longest line ("CONTACT WITH PRODUCTION."
-   at weight 900), so the three authored lines never wrap; 93vw is the content column
-   (100vw minus the 7vw section-index gutter). */
-.hero h1 { margin: 0; font-size: clamp(3.2rem, calc((93vw - 2 * var(--pad)) / 13.8), 10rem); font-weight: 900; line-height: 0.82; letter-spacing: -0.045em; text-transform: uppercase; }
+   at weight 900) plus ~6% clearance, so the three authored lines never wrap and still
+   stop short of the edge; 93vw is the content column (100vw minus the 7vw gutter). */
+.hero h1 { margin: 0; font-size: clamp(3.2rem, calc((93vw - 2 * var(--pad)) / 14.6), 10rem); font-weight: 900; line-height: 0.82; letter-spacing: -0.045em; text-transform: uppercase; }
 .hero h1 em { color: var(--signal); font-style: normal; }
 .runtime-facts { display: flex; flex-wrap: wrap; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .runtime-facts span { padding: 0.55rem 0.8rem; border-right: 1px solid var(--line); color: var(--muted); font-family: var(--font-mono); font-size: clamp(0.59rem, 0.8vw, 0.7rem); font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
