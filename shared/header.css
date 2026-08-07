@@ -81,6 +81,15 @@
   .status-dot::after { animation: none; opacity: 0.25; transform: scale(1); }
 }
 
+/* The portfolio caps its grid at the same 1620px measure past this width. Left
+   full-bleed, the wordmark and the runtime button drift hundreds of pixels
+   outside the content they belong to; padding the bar to the same measure keeps
+   the chrome aligned while its background and bottom rule still span the
+   viewport. Mirrored in the design system's NavBar.css. */
+@media (min-width: 1700px) {
+  .topbar { padding-inline: calc((100% - 1620px) / 2); }
+}
+
 @media (max-width: 680px) {
   .topbar { grid-template-columns: 1fr auto auto; gap: 0.75rem; }
   .topbar > nav { display: none; }
