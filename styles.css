@@ -51,7 +51,11 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .eyebrow { margin: 0 0 1rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; }
 
 .hero { min-height: calc(100vh - 64px); }
-.hero-content { display: grid; align-content: start; gap: clamp(1.5rem, 4.5vh, 3rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
+/* space-between, not start: the hero is pinned to the fold, so on tall or narrow
+   viewports (tablet portrait especially) a start-aligned stack left a dead band
+   under the buttons. Distributing the slack lets the closing line sit on the
+   fold instead, and it collapses back to the gap floor when there is no slack. */
+.hero-content { display: grid; align-content: space-between; gap: clamp(1.5rem, 4.5vh, 3rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
 .hero h1 { max-width: 15ch; margin: 0; font-size: clamp(3.2rem, 10.7vw, 10rem); font-weight: 900; line-height: 0.82; letter-spacing: -0.045em; text-transform: uppercase; }
 .hero h1 em { color: var(--signal); font-style: normal; }
 .runtime-facts { display: flex; flex-wrap: wrap; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -80,8 +84,12 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .impact-cell strong { font-size: clamp(2.7rem, 6vw, 6rem); line-height: 0.85; letter-spacing: -0.04em; }
 .impact-cell span { max-width: 18ch; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
 
-.work > div:last-child, .principles > div:last-child, .capabilities > div:last-child, .experience > div:last-child, .interests > div:last-child { padding: clamp(3.5rem, 8vw, 8rem) var(--pad); }
-.section-heading { display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; align-items: end; margin-bottom: clamp(2.5rem, 6vw, 6rem); }
+/* Content sections repeat often enough that viewport-width-driven 8rem gutters
+   compound into long stretches of empty page at ordinary desktop heights.
+   The reduced ceiling keeps the editorial rhythm without making every section
+   consume most of a screen before its actual content begins. */
+.work > div:last-child, .principles > div:last-child, .capabilities > div:last-child, .experience > div:last-child, .interests > div:last-child { padding: clamp(3rem, 6vw, 6rem) var(--pad); }
+.section-heading { display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; align-items: end; margin-bottom: clamp(2.25rem, 4vw, 4.5rem); }
 .section-heading h2, .education h2, .contact h2 { margin: 0; font-size: clamp(2.6rem, 7.5vw, 7.3rem); line-height: 0.86; letter-spacing: -0.04em; }
 .section-heading > p { max-width: 44ch; margin: 0; color: var(--muted); line-height: 1.45; }
 .project-controls { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
@@ -148,7 +156,7 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .timeline article > p { line-height: 1.45; }
 
 .education { background: var(--signal); color: var(--ink); }
-.education-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; padding: clamp(3.5rem, 8vw, 8rem) var(--pad); }
+.education-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; padding: clamp(3rem, 6vw, 6rem) var(--pad); }
 .degree-list { border-top: 2px solid var(--ink); }
 .degree-list article { display: grid; gap: 0.65rem; padding: 1.5rem 0; border-bottom: 1px solid rgba(10,10,10,0.35); }
 .degree-list strong { font-size: 1.1rem; }
@@ -170,7 +178,7 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 
 .contact { display: grid; grid-template-columns: minmax(260px, 0.65fr) 1.35fr; min-height: 75vh; background: var(--ink); color: var(--paper); }
 .contact img { width: 100%; height: 100%; max-height: 760px; object-fit: cover; filter: grayscale(1) contrast(1.15); }
-.contact > div { display: grid; align-content: space-between; gap: 3rem; padding: clamp(3rem, 7vw, 7rem) var(--pad); }
+.contact > div { display: grid; align-content: space-between; gap: 3rem; padding: clamp(3rem, 6vw, 6rem) var(--pad); }
 .contact-links { display: flex; flex-wrap: wrap; gap: 1rem 2rem; border-top: 1px solid rgba(242,240,233,0.3); padding-top: 1.5rem; }
 .contact-links a { font-family: var(--font-mono); font-size: 0.8rem; text-underline-offset: 5px; }
 
@@ -199,8 +207,30 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
 .graph-visual .edges { fill: none; stroke: rgba(242,240,233,0.38); stroke-width: 2; }
 .graph-visual .nodes { fill: var(--ink); stroke: var(--signal); stroke-width: 4; }
 
+/* Past ~1700px the layout stops earning its width: every measure is already
+   capped in ch, so the extra viewport becomes a void on the right rather than
+   more design — headings, project rows and timeline entries drift apart until
+   they read as unrelated fragments. Centering the grid between two slack
+   columns holds a deliberate measure while section bands, rules and borders
+   still run edge to edge, which is the whole point of the brutalist frame. */
+@media (min-width: 1700px) {
+  .section-grid { grid-template-columns: 1fr 7rem minmax(0, 1500px) 1fr; }
+  .section-index { grid-column: 2; }
+  .section-grid > :last-child { grid-column: 3; }
+  /* padding rather than max-width so the section's own bottom rule keeps
+     spanning the viewport while its cells align with the capped grid above. */
+  .impact-grid, footer { padding-inline: calc((100% - 1620px) / 2); }
+  /* .contact stays full-bleed on purpose: the portrait running off the left
+     edge is the closing image of the page, and insetting it left the photo
+     stranded in a black field. */
+}
+
 @media (max-width: 900px) {
   .impact-grid { grid-template-columns: 1fr 1fr; }
+  /* The two-up hero footer needs ~510px before its columns start fighting;
+     below that the proposition and the actions read better stacked. */
+  .hero-bottom { grid-template-columns: 1fr; }
+  .hero-actions { justify-content: flex-start; }
   .impact-cell:nth-child(2) { border-right: 0; }
   .impact-cell:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .principle-grid { grid-template-columns: 1fr; }
@@ -215,6 +245,20 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
   .education-layout { grid-template-columns: 1fr; }
 }
 
+/* Wide monitors with limited vertical room need a height-aware hero: width
+   alone otherwise drives the headline to its 10rem ceiling and pushes the
+   proposition and calls to action below the first 1080px viewport. */
+@media (min-width: 901px) and (max-height: 1100px) {
+  .hero-content {
+    gap: clamp(1rem, 2.5vh, 1.75rem);
+    padding-top: clamp(1.75rem, 4vh, 2.75rem);
+  }
+
+  .hero h1 {
+    font-size: clamp(3.2rem, min(8.5vw, 14vh), 8rem);
+  }
+}
+
 @media (max-width: 680px) {
   .section-grid { grid-template-columns: 38px minmax(0, 1fr); }
   .section-index { padding-left: 0.65rem; }
@@ -222,8 +266,10 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
      always fits the hero column — 70px is the section-index gutter plus padding. */
   .hero h1 { font-size: min(5.8rem, calc((100vw - 70px) / 6.9)); }
   .runtime-facts span { flex: 1 1 auto; min-width: 0; padding: 0.55rem 0.6rem; }
-  .hero-bottom, .section-heading { grid-template-columns: 1fr; }
-  .hero-actions { justify-content: flex-start; }
+  .section-heading { grid-template-columns: 1fr; }
+  /* Both labels are long enough to own a line on a phone; equal full-width
+     buttons beat two ragged pills of different widths. */
+  .hero-actions .button { flex: 1 1 100%; }
   .impact-cell { min-height: 150px; }
   .project-controls { align-items: stretch; flex-direction: column; }
   .category-list button { min-height: 44px; padding: 0.75rem 0.9rem; }
@@ -238,6 +284,22 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
   .contact { grid-template-columns: 1fr; }
   .contact img { max-height: 430px; object-position: center 26%; }
   footer { flex-direction: column; }
+}
+
+/* Phones and small tablets held sideways: width-driven type sizing has no idea
+   the viewport is only ~400px tall, so the headline alone overran the fold and
+   buried the proposition. Height-capped type plus a released min-height puts
+   the whole hero back on one screen. Declared after the width breakpoints so it
+   wins on a small landscape phone, where both queries match. */
+@media (max-height: 560px) and (orientation: landscape) {
+  .hero { min-height: 0; }
+  .hero h1 { font-size: min(9vw, 13vh); }
+  .hero-content { gap: clamp(0.75rem, 2vh, 1.5rem); padding-top: clamp(1rem, 3vh, 2rem); }
+  /* Landscape is the one case where a short viewport still has width to spare,
+     so the hero footer goes back two-up rather than eating two more rows. */
+  .hero-bottom { grid-template-columns: minmax(0, 1fr) auto; }
+  .hero-actions { justify-content: flex-end; }
+  .hero-actions .button { flex: 0 1 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

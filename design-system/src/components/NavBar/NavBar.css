@@ -39,6 +39,14 @@
 .ds-topbar__action {
   justify-self: end;
 }
+/* Mirrors the site's ultrawide chrome cap in shared/header.css: past this width
+   the page content is centred on a 1620px measure, so the bar pads to match
+   while its background and bottom rule stay full-bleed. */
+@media (min-width: 1700px) {
+  .ds-topbar {
+    padding-inline: calc((100% - 1620px) / 2);
+  }
+}
 @media (max-width: 680px) {
   .ds-topbar {
     grid-template-columns: 1fr auto;
