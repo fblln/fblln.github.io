@@ -2,6 +2,11 @@
 mod articles;
 #[cfg(target_arch = "wasm32")]
 mod boot;
+// Instruments only ever run in the browser; the static renderer emits the
+// placeholder and nothing more. Compiled under `test` too so the protocol
+// logic stays covered by the native test run.
+#[cfg(any(target_arch = "wasm32", test))]
+mod instrument;
 #[cfg(target_arch = "wasm32")]
 mod panel;
 /// The static render emits the same footer button, but there is no document to

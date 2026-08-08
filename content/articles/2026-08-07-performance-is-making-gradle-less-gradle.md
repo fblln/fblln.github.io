@@ -232,6 +232,13 @@ It can parallelize. It can skip work entirely.
 > Strict architecture does not cost performance. It creates the space where
 > performance becomes legal.
 
+<figure class="diagram">
+<div data-instrument="isolated">
+<p class="inst-static">This trade is also available as a working model: add a cross-project reference to an eight-project build, then switch Isolated Projects on and configure. It needs the page's WebAssembly bundle, which has not loaded here — the argument is unchanged without it.</p>
+</div>
+<figcaption>The trade, operable — and deliberately arranged so the speedup is the second thing you notice. Configure with cross-project access allowed and all eight projects reconfigure serially, every time, because any one of them may have mutated another. Switch to <strong>ISOLATED</strong> and edit a single project: one configures, seven come from cache. Then add a cross-project reference and configure again — the build does not get slower, it <em>fails</em>, on logic that was legal thirty seconds earlier. The wall-clock figures are arithmetic from a stated model, not a measurement; the real numbers are in the paragraph below.</figcaption>
+</figure>
+
 The numbers Gradle reports from migrating its own build are not subtle. An IDE
 sync after adding a dependency dropped from roughly 45 seconds to 27. A sync
 after changing build logic went from about 2 minutes 57 seconds to 1 minute

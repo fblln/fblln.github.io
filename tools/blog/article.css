@@ -127,4 +127,139 @@ figure.diagram figcaption {
 }
 figure.diagram figcaption code { font-family: var(--font-mono); font-size: 0.9em; }
 
+/* Instruments. An interactive figure sits on the ink ground because that is the
+   system/inspection surface across the whole identity — the same ground as the
+   diagnostics panel and the case studies. It reads as another figure in the
+   article, not as an embedded application, which is why it borrows the diagram's
+   margins and the mono label vocabulary rather than inventing chrome. */
+.inst {
+  margin: 2.4rem 0;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 1rem;
+}
+.inst-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: .6rem .9rem;
+  border-bottom: 1px solid rgba(242,240,233,.25);
+  font: 700 .66rem/1 var(--font-mono);
+  letter-spacing: .09em; text-transform: uppercase;
+  color: rgba(242,240,233,.65);
+}
+.inst-anchor { color: var(--signal); }
+
+.inst-controls { display: flex; flex-wrap: wrap; gap: .4rem; padding: .9rem; border-bottom: 1px solid rgba(242,240,233,.25); }
+.inst-controls button {
+  flex: 1 1 auto; min-height: 44px;
+  border: 1px solid rgba(242,240,233,.4); background: transparent; color: var(--paper);
+  font: 800 .68rem/1 var(--font-sans); letter-spacing: .07em; text-transform: uppercase;
+  cursor: pointer; transition: 140ms ease;
+}
+.inst-controls button:hover { border-color: var(--signal); color: var(--signal); }
+/* The selected anchor inverts, mirroring the active project row on the site. */
+.inst-controls button.active { background: var(--paper); border-color: var(--paper); color: var(--ink); }
+
+.inst-readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.inst-readout > div {
+  display: grid; gap: .5rem; align-content: start;
+  padding: .85rem .9rem;
+  border-right: 1px solid rgba(242,240,233,.2);
+  border-bottom: 1px solid rgba(242,240,233,.2);
+}
+.inst-readout > div:last-child { border-right: 0; }
+.inst-readout span { font: 700 .58rem/1.3 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; color: rgba(242,240,233,.55); }
+.inst-readout strong { font: 700 .92rem/1.2 var(--font-mono); word-break: break-word; }
+/* The handshake counter is the evidence the article is arguing about, so it is
+   the one element allowed to take the signal colour — and only once it is
+   non-zero, which is the moment the cost becomes real. */
+.inst-cost strong { font-size: 1.6rem; letter-spacing: -.02em; }
+.inst-cost strong.hot { color: var(--signal); }
+
+.inst-pending {
+  margin: 0; padding: .8rem .9rem;
+  border-bottom: 1px solid rgba(242,240,233,.2);
+  border-left: 4px solid var(--signal);
+  background: rgba(255,59,0,.08);
+  font: 400 .88rem/1.5 var(--font-sans); color: rgba(242,240,233,.85);
+}
+
+.inst-actions { display: flex; flex-wrap: wrap; gap: .4rem; padding: .9rem; }
+.inst-actions button {
+  min-height: 44px; padding: 0 .8rem;
+  border: 1px solid rgba(242,240,233,.4); background: transparent; color: var(--paper);
+  font: 700 .64rem/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase;
+  cursor: pointer; transition: 140ms ease;
+}
+.inst-actions button:hover:not(:disabled) { background: var(--signal); border-color: var(--signal); color: var(--ink); }
+.inst-actions button:disabled { opacity: .35; cursor: not-allowed; }
+
+.inst-log { margin: 0; padding: 0 .9rem .9rem; list-style: none; display: grid; gap: .3rem; }
+.inst-log li {
+  margin: 0; padding-left: 1.1rem; position: relative;
+  font: 400 .74rem/1.5 var(--font-mono); color: rgba(242,240,233,.7); word-break: break-word;
+}
+.inst-log li::before { content: ">"; position: absolute; left: 0; color: rgba(242,240,233,.4); }
+.inst-log li.ok { color: rgba(242,240,233,.85); }
+.inst-log li.ok::before { content: ">"; color: #149447; }
+.inst-log li.held::before { content: "!"; color: var(--signal); }
+.inst-log li.fail { color: var(--paper); }
+.inst-log li.fail::before { content: "×"; color: var(--signal); }
+
+.inst button:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+/* Memory map (sram) and project grid (isolated). Both encode state in form as
+   well as colour, per the identity's three-state rule: colour alone would fail
+   for a reader who cannot separate the green from the orange. */
+.inst-map { display: flex; height: 30px; margin: .9rem .9rem 0; border: 1px solid rgba(242,240,233,.4); }
+.inst-map span { display: block; height: 100%; min-width: 0; }
+.seg-globals { background: rgba(242,240,233,.28); }
+/* Diagonal hatching, not a second hue: the heap and the stack are the same kind
+   of thing growing from opposite ends, so they differ in direction, not colour. */
+.seg-heap { background: repeating-linear-gradient(45deg, rgba(242,240,233,.62) 0 3px, rgba(242,240,233,.34) 3px 6px); }
+.seg-stack { background: repeating-linear-gradient(-45deg, rgba(242,240,233,.62) 0 3px, rgba(242,240,233,.34) 3px 6px); }
+.seg-free { background: transparent; }
+/* The one place signal appears in the map, and only when it is earned. */
+.seg-overlap { background: var(--signal); }
+
+.inst-legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; padding: .55rem .9rem 0; }
+.inst-legend span { display: inline-flex; align-items: center; gap: .35rem; font: 700 .56rem/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: rgba(242,240,233,.55); }
+.inst-legend i { width: 10px; height: 10px; border: 1px solid rgba(242,240,233,.4); flex: none; }
+
+.inst-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 3px; padding: .9rem .9rem 0; }
+.inst-grid .cell {
+  display: flex; align-items: center; justify-content: center; min-height: 40px;
+  border: 1px solid rgba(242,240,233,.35);
+  font: 700 .64rem/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
+}
+.inst-grid .cell.dirty { background: rgba(242,240,233,.16); color: var(--paper); }
+/* Cached projects recede — the point of the isolated build is that most of the
+   graph does nothing at all. */
+.inst-grid .cell.cached { border-style: dashed; border-color: rgba(242,240,233,.22); color: rgba(242,240,233,.4); }
+.inst-grid .cell.bad { background: var(--signal); border-color: var(--signal); color: var(--ink); }
+.inst-legend i.cell.dirty { background: rgba(242,240,233,.16); }
+.inst-legend i.cell.cached { border-style: dashed; }
+.inst-legend i.cell.bad { background: var(--signal); border-color: var(--signal); }
+
+/* Stated model assumptions. Every instrument that reports a number it did not
+   measure says so here, in the panel, not only in the caption. */
+.inst-note {
+  margin: 0; padding: .7rem .9rem 0;
+  font: 400 .72rem/1.5 var(--font-mono); color: rgba(242,240,233,.5);
+}
+
+/* Static fallback, on paper: it is what a reader sees when the wasm bundle never
+   loads, so it cannot assume the ink ground the mounted instrument brings with
+   it. Replaced wholesale on mount. */
+.inst-static {
+  margin: 2.4rem 0; padding: 1rem 1.2rem;
+  border: 1px solid var(--line); border-left: 4px solid var(--signal);
+  font: 400 .95rem/1.6 var(--font-sans); color: var(--muted);
+}
+
+@media (max-width: 34rem) {
+  .inst-actions button, .inst-controls button { flex: 1 1 100%; }
+}
+
 /* ---- syntect code-block token colors appended below ---- */

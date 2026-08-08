@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use web_sys::HtmlElement;
 
-pub(crate) const PRODUCTION_WASM_SIZE: &str = "80 KiB";
+pub(crate) const PRODUCTION_WASM_SIZE: &str = "102 KiB";
 
 /// Reads the compressed response size rather than transfer size so cached WASM
 /// still reports the module size the user received on its original fetch.

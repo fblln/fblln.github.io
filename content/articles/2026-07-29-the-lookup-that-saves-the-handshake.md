@@ -570,6 +570,13 @@ The CID solves security-context discovery. Return routability solves path
 ownership. They look like one problem — "the client moved" — and they are not,
 and the four years between the two documents is the evidence.
 
+<figure class="diagram">
+<div data-instrument="dtls-cid">
+<p class="inst-static">The flow above is also available as a working model: switch the anchor between the 5-tuple and a connection identifier, rebind the NAT, and watch what each choice costs. It needs the page's WebAssembly bundle, which has not loaded here — the argument is unchanged without it.</p>
+</div>
+<figcaption>The same decision flow, operable. Rebind the NAT under <strong>5-tuple</strong> anchoring and every wake costs a full handshake; switch to <strong>connection id</strong> and the same rebinding costs nothing. Then try to move the binding with a replayed record from a forged address: condition 2 refuses records that are not newer, and condition 3 holds the binding until the path answers back. Turning the server into a reflector requires defeating both.</figcaption>
+</figure>
+
 ## The eight bytes are an interface
 
 There is a way of reading the CID that I like better than "a NAT workaround".

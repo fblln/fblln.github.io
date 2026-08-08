@@ -21,6 +21,7 @@ pub fn enhance() {
     let Some(doc) = win.document() else { return };
     add_copy_buttons(&doc);
     crate::panel::wire();
+    crate::instrument::mount_all(&doc);
     add_progress_bar(&win, &doc);
 }
 
