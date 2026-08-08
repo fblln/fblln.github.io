@@ -257,13 +257,34 @@ figure.diagram figcaption code { font-family: var(--font-mono); font-size: 0.9em
 .inst-bars .bar b { font: 700 .64rem/1.6 var(--font-mono); }
 .inst-bars .bar i { font: 400 .56rem/1 var(--font-mono); font-style: normal; letter-spacing: .06em; color: rgba(242,240,233,.5); }
 
-/* One cell per key. Relocation is the whole subject, so the only colour in the
-   field marks the keys that moved — the rest stay deliberately quiet. */
-.inst-keys { display: flex; flex-wrap: wrap; gap: 2px; padding: .9rem .9rem 0; }
-.inst-keys .key { width: 10px; height: 10px; border: 1px solid rgba(242,240,233,.3); }
-.inst-keys .key.moved { background: var(--signal); border-color: var(--signal); }
-.inst-legend i.key { width: 10px; height: 10px; }
-.inst-legend i.key.moved { background: var(--signal); border-color: var(--signal); }
+/* The hash circle. Keys sit at their own hash and never move; only the
+   ownership around them does, so contiguous spans versus interleaved specks is
+   the whole comparison — and it is a shape, not a number.
+
+   Partitions are separated by a cycling grey step rather than by hue. The
+   identity has one accent and it is spent on relocation, so introducing a
+   categorical palette here would both break the system and put meaning in a
+   channel a colourblind reader cannot use. Shape carries the lesson; the load
+   bars carry the per-partition numbers. */
+.inst-ring { padding: .9rem .9rem 0; display: flex; justify-content: center; }
+.inst-ring svg { width: 100%; max-width: 300px; height: auto; overflow: visible; }
+.inst-ring .ring-base { fill: none; stroke: rgba(242,240,233,.14); stroke-width: 14; }
+.inst-ring .seg { fill: none; stroke-width: 14; stroke-linecap: butt; }
+.inst-ring .key { stroke: none; }
+.inst-ring .s0 { stroke: rgba(242,240,233,.30); fill: rgba(242,240,233,.30); }
+.inst-ring .s1 { stroke: rgba(242,240,233,.52); fill: rgba(242,240,233,.52); }
+.inst-ring .s2 { stroke: rgba(242,240,233,.74); fill: rgba(242,240,233,.74); }
+.inst-ring .s3 { stroke: rgba(242,240,233,.96); fill: rgba(242,240,233,.96); }
+/* Keys are strokeless dots, so the shade classes must fill them; segments are
+   strokes with no fill. Both share a class, hence setting both properties. */
+.inst-ring .seg.s0, .inst-ring .seg.s1, .inst-ring .seg.s2, .inst-ring .seg.s3 { fill: none; }
+.inst-ring .key.moved { fill: var(--signal); stroke: none; }
+.inst-ring .ring-note { font: 700 15px/1 var(--font-mono); fill: var(--paper); }
+.inst-ring .ring-sub { font: 400 9px/1 var(--font-mono); letter-spacing: .08em; fill: rgba(242,240,233,.5); text-transform: uppercase; }
+.inst-legend i.key, .inst-legend i.seg { width: 10px; height: 10px; border: 0; }
+.inst-legend i.key.s0 { background: rgba(242,240,233,.55); border-radius: 50%; }
+.inst-legend i.seg.s1 { background: rgba(242,240,233,.52); }
+.inst-legend i.key.moved { background: var(--signal); border-radius: 50%; }
 
 /* ── The lab. Unlisted page carrying every instrument, attached or not. ──── */
 .lab-item { margin: 3.5rem 0 0; padding-top: 2rem; border-top: 1px solid var(--line); }

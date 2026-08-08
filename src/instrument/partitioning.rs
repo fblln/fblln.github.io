@@ -36,6 +36,19 @@ pub(crate) mod logic {
     pub(crate) const VNODE_CHOICES: [usize; 3] = [1, 16, 128];
     pub(crate) const START_VNODES: usize = 128;
 
+    /// How finely the ring is sampled when drawing ownership. Bounds the arc
+    /// count regardless of how many virtual nodes are in play.
+    pub(crate) const RING_SAMPLES: usize = 360;
+
+    /// A contiguous span of the hash circle owned by one partition.
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub(crate) struct Arc {
+        /// Degrees clockwise from the top of the circle.
+        pub(crate) start: f32,
+        pub(crate) end: f32,
+        pub(crate) partition: usize,
+    }
+
     #[derive(Clone, Copy, PartialEq, Eq, Debug)]
     pub(crate) enum Strategy {
         /// `toPositive(murmur2(key)) % numPartitions` — Kafka's DefaultPartitioner.
@@ -260,6 +273,67 @@ pub(crate) mod logic {
                 return 0.0;
             }
             100.0 / to.max(from) as f32
+        }
+
+        /// Where a key sits on the hash circle, in degrees clockwise from the
+        /// top. The keys never move — only the ownership around them does,
+        /// which is the point the drawing has to make.
+        pub(crate) fn key_angle(&self, key: usize) -> f32 {
+            let hash = self.key_hashes.get(key).copied().unwrap_or(0);
+            hash as f32 / u32::MAX as f32 * 360.0
+        }
+
+        /// Ring ownership, sampled and merged into contiguous runs.
+        ///
+        /// Sampling rather than emitting one arc per virtual node keeps the
+        /// drawing bounded: 128 vnodes across 12 partitions is 1536 arcs of a
+        /// quarter-degree each, which is both slow and sub-pixel mush. At 360
+        /// samples the picture is honest at every vnode count — clean arcs when
+        /// there is one point per partition, fine stripes when there are many,
+        /// which is exactly what balancing the ring looks like.
+        ///
+        /// Empty under modulo, and that emptiness is the comparison: modulo
+        /// ownership is not positional, so there is no arc to draw. The keys
+        /// scatter into interleaved specks instead.
+        pub(crate) fn arcs(&self) -> Vec<Arc> {
+            if self.strategy != Strategy::Ring || self.points.is_empty() {
+                return Vec::new();
+            }
+            let step = 360.0 / RING_SAMPLES as f32;
+            let owners: Vec<usize> = (0..RING_SAMPLES)
+                .map(|sample| {
+                    let hash = ((sample as f64 / RING_SAMPLES as f64) * u32::MAX as f64) as u32;
+                    self.bucket_for(hash)
+                })
+                .collect();
+
+            // Start walking at a real ownership boundary rather than at 0°.
+            // Sampling from a fixed origin splits whichever run straddles the
+            // seam, and a reader looking at five partitions would be told there
+            // are six spans. Rotating to a boundary costs one scan and makes the
+            // count mean what it says.
+            let origin = (0..RING_SAMPLES)
+                .find(|&i| owners[i] != owners[(i + RING_SAMPLES - 1) % RING_SAMPLES])
+                .unwrap_or(0);
+
+            let mut arcs: Vec<Arc> = Vec::new();
+            for offset in 0..RING_SAMPLES {
+                let partition = owners[(origin + offset) % RING_SAMPLES];
+                // Angles run monotonically from the origin and may pass 360°.
+                // The polar conversion is periodic, so the drawing is unaffected
+                // and the arcs stay one increasing sequence with no seam.
+                let start = (origin + offset) as f32 * step;
+                match arcs.last_mut() {
+                    // Extend the run in place while ownership holds.
+                    Some(run) if run.partition == partition => run.end = start + step,
+                    _ => arcs.push(Arc {
+                        start,
+                        end: start + step,
+                        partition,
+                    }),
+                }
+            }
+            arcs
         }
 
         pub(crate) fn add_partition(&mut self) {
@@ -554,6 +628,115 @@ pub(crate) mod logic {
             assert!(c.spread() >= 1.0);
         }
 
+        /// Modulo has no positional ownership, so there is nothing to draw. The
+        /// drawing's emptiness is doing real work here — it is half the
+        /// comparison the instrument exists to make.
+        #[test]
+        fn modulo_has_no_arcs_because_ownership_is_not_positional() {
+            let c = Cluster::new();
+            assert_eq!(c.strategy, Strategy::Modulo);
+            assert!(c.arcs().is_empty());
+        }
+
+        /// The arcs must tile the circle exactly: a gap would draw a key sitting
+        /// on unowned space, and an overlap would draw two owners for one key.
+        #[test]
+        fn invariant_ring_arcs_tile_the_whole_circle() {
+            for vnodes in VNODE_CHOICES {
+                let mut c = Cluster::new();
+                c.vnodes = vnodes;
+                c.set_strategy(Strategy::Ring);
+                let arcs = c.arcs();
+                assert!(!arcs.is_empty(), "{vnodes} vnodes produced no arcs");
+                let covered: f32 = arcs.iter().map(|a| a.end - a.start).sum();
+                assert!(
+                    (covered - 360.0).abs() < 0.01,
+                    "{vnodes} vnodes covered {covered}°, not the full circle"
+                );
+                for pair in arcs.windows(2) {
+                    assert!(
+                        (pair[0].end - pair[1].start).abs() < 0.01,
+                        "gap or overlap between arcs"
+                    );
+                    assert_ne!(
+                        pair[0].partition, pair[1].partition,
+                        "adjacent runs must have been merged"
+                    );
+                }
+                for arc in &arcs {
+                    assert!(arc.end > arc.start, "an arc must have width");
+                    assert!(arc.partition < c.partitions);
+                }
+            }
+        }
+
+        /// One point per partition means exactly one contiguous arc each — the
+        /// textbook picture, and the number the centre of the drawing reports.
+        /// Because the walk starts at an ownership boundary there is no seam to
+        /// split a run, so this is an equality rather than a bound. A reader
+        /// counting five partitions must not be told there are six spans.
+        #[test]
+        fn one_virtual_node_gives_each_partition_exactly_one_arc() {
+            for extra in 0..4 {
+                let mut c = Cluster::new();
+                c.vnodes = 1;
+                c.set_strategy(Strategy::Ring);
+                for _ in 0..extra {
+                    c.add_partition();
+                }
+                let arcs = c.arcs();
+                assert_eq!(
+                    arcs.len(),
+                    c.partitions,
+                    "{} partitions should own exactly {} spans",
+                    c.partitions,
+                    c.partitions
+                );
+                let owners: std::collections::HashSet<_> =
+                    arcs.iter().map(|a| a.partition).collect();
+                assert_eq!(owners.len(), c.partitions, "every partition owns an arc");
+            }
+        }
+
+        /// More virtual nodes means the ring is cut into more, smaller spans —
+        /// which is the mechanism by which they balance it.
+        #[test]
+        fn more_virtual_nodes_cut_the_ring_into_more_spans() {
+            let mut lumpy = Cluster::new();
+            lumpy.vnodes = 1;
+            lumpy.set_strategy(Strategy::Ring);
+
+            let mut smooth = Cluster::new();
+            smooth.vnodes = 16;
+            smooth.set_strategy(Strategy::Ring);
+
+            assert!(smooth.arcs().len() > lumpy.arcs().len());
+            assert!(
+                smooth.arcs().len() <= RING_SAMPLES,
+                "arc count must stay bounded by the sampling"
+            );
+        }
+
+        #[test]
+        fn key_angles_stay_on_the_circle_and_do_not_move_with_membership() {
+            let mut c = Cluster::new();
+            let before: Vec<f32> = (0..KEY_COUNT).map(|k| c.key_angle(k)).collect();
+            assert!(before.iter().all(|a| (0.0..=360.0).contains(a)));
+            c.set_strategy(Strategy::Ring);
+            c.add_partition();
+            let after: Vec<f32> = (0..KEY_COUNT).map(|k| c.key_angle(k)).collect();
+            assert_eq!(
+                before, after,
+                "a key's position is its hash, and never moves"
+            );
+        }
+
+        #[test]
+        fn an_out_of_range_key_angle_is_harmless() {
+            let c = Cluster::new();
+            assert_eq!(c.key_angle(KEY_COUNT + 99), 0.0);
+        }
+
         #[test]
         fn reset_restores_the_starting_cluster() {
             let mut c = Cluster::new();
@@ -570,6 +753,47 @@ pub(crate) mod logic {
 pub(crate) mod view {
     use super::logic::{Cluster, KEY_COUNT, MAX_PARTITIONS, MIN_PARTITIONS, Strategy};
     use leptos::prelude::*;
+
+    const CENTRE: f32 = 150.0;
+    const RING_R: f32 = 104.0;
+    const KEY_R: f32 = 132.0;
+
+    /// A point on the hash circle, in SVG coordinates. Zero degrees is the top,
+    /// running clockwise, because that is how every hash-ring diagram is drawn
+    /// and disagreeing with the convention would cost more than it buys.
+    fn polar(radius: f32, degrees: f32) -> (f32, f32) {
+        let radians = (degrees - 90.0).to_radians();
+        (
+            CENTRE + radius * radians.cos(),
+            CENTRE + radius * radians.sin(),
+        )
+    }
+
+    fn arc_path(radius: f32, start: f32, end: f32) -> String {
+        let (x1, y1) = polar(radius, start);
+        let (x2, y2) = polar(radius, end);
+        let sweep = if end - start > 180.0 { 1 } else { 0 };
+        format!("M {x1:.2} {y1:.2} A {radius} {radius} 0 {sweep} 1 {x2:.2} {y2:.2}")
+    }
+
+    /// Partitions are told apart by a cycling grey step rather than by hue: the
+    /// identity has exactly one accent and it is spent on relocation. Four steps
+    /// means two partitions can share a shade at high counts, which is why the
+    /// load bars below carry the exact per-partition numbers — the ring's job is
+    /// to show whether ownership is contiguous, not which partition is which.
+    fn shade(partition: usize) -> String {
+        format!("seg s{}", partition % 4)
+    }
+
+    /// A key takes its owner's shade so a contiguous run of one shade reads as
+    /// one partition's territory — unless it moved, which outranks everything.
+    fn key_class(partition: usize, moved: bool) -> String {
+        if moved {
+            "key moved".to_string()
+        } else {
+            format!("key s{}", partition % 4)
+        }
+    }
 
     #[component]
     pub(crate) fn Partitioning() -> impl IntoView {
@@ -597,6 +821,49 @@ pub(crate) mod view {
                     >"HASH RING"</button>
                 </div>
 
+                <div class="inst-ring">
+                    <svg viewBox="0 0 300 300" role="img"
+                        aria-label=move || c.with(|c| match c.strategy {
+                            Strategy::Ring => format!(
+                                "The 32-bit hash circle, cut into {} spans owned by {} partitions. {} of {KEY_COUNT} keys were relocated by the last change.",
+                                c.arcs().len(), c.partitions, c.relocated.len()),
+                            Strategy::Modulo => format!(
+                                "The 32-bit hash circle with no ownership spans: modulo assigns each of {KEY_COUNT} keys independently of its position. {} were relocated by the last change.",
+                                c.relocated.len()),
+                        })>
+                        // The bare circle, always drawn: it is the hash space
+                        // itself, and it is what both strategies have in common.
+                        <circle class="ring-base" cx=CENTRE cy=CENTRE r=RING_R />
+                        {move || c.with(|c| c.arcs().into_iter().map(|a| {
+                            view! { <path class=shade(a.partition) d=arc_path(RING_R, a.start, a.end) /> }
+                        }).collect_view())}
+                        {move || c.with(|c| (0..KEY_COUNT).map(|k| {
+                            let (x, y) = polar(KEY_R, c.key_angle(k));
+                            let moved = c.was_relocated(k);
+                            let class = key_class(c.assignment[k], moved);
+                            let r = if moved { 4.0 } else { 2.6 };
+                            view! { <circle class=class cx=x cy=y r=r /> }
+                        }).collect_view())}
+                        <text class="ring-note" x=CENTRE y=CENTRE text-anchor="middle">
+                            {move || c.with(|c| match c.strategy {
+                                Strategy::Ring => format!("{} spans", c.arcs().len()),
+                                Strategy::Modulo => "no spans".to_string(),
+                            })}
+                        </text>
+                        <text class="ring-sub" x=CENTRE y=CENTRE+16.0 text-anchor="middle">
+                            {move || c.with(|c| match c.strategy {
+                                Strategy::Ring => "ownership is positional".to_string(),
+                                Strategy::Modulo => "position means nothing".to_string(),
+                            })}
+                        </text>
+                    </svg>
+                </div>
+                <div class="inst-legend">
+                    <span><i class="key s0"></i>"KEY, PLACED AT ITS HASH"</span>
+                    <span><i class="key moved"></i>"RELOCATED BY THE LAST CHANGE"</span>
+                    <span><i class="seg s1"></i>"SPAN OWNED BY ONE PARTITION"</span>
+                </div>
+
                 <div class="inst-bars" role="img"
                     aria-label=move || c.with(|c| format!(
                         "{} partitions holding {:?} keys", c.partitions, c.load()))>
@@ -614,18 +881,6 @@ pub(crate) mod view {
                             }
                         }).collect_view()
                     })}
-                </div>
-
-                <div class="inst-keys" role="img"
-                    aria-label=move || c.with(|c| format!("{} of {KEY_COUNT} keys relocated", c.relocated.len()))>
-                    {move || c.with(|c| (0..KEY_COUNT).map(|k| {
-                        let class = if c.was_relocated(k) { "key moved" } else { "key" };
-                        view! { <span class=class></span> }
-                    }).collect_view())}
-                </div>
-                <div class="inst-legend">
-                    <span><i class="key"></i>"KEY, WHERE IT WAS"</span>
-                    <span><i class="key moved"></i>"RELOCATED BY THE LAST CHANGE"</span>
                 </div>
 
                 <div class="inst-readout">
