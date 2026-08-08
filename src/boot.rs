@@ -11,7 +11,7 @@ const BOOT_MIN_MS: f64 = 1100.0;
 
 pub fn run() {
     console_error_panic_hook::set_once();
-    if crate::articles::is_article_page() {
+    if crate::articles::is_enhanced_page() {
         crate::articles::enhance();
         return;
     }

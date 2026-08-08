@@ -11,6 +11,11 @@
 //! | `dtls-cid` | The Lookup That Saves the Handshake | The cost of anchoring on an address, and that CID alone is not enough |
 //! | `sram` | Two Kilobytes and No Operating System | A failure that raises nothing at all |
 //! | `isolated` | Performance Is Making Gradle Less Gradle | That the speedup is a restriction, not an optimisation |
+//! | `partitioning` | (unattached — lives on the bench) | That modulo partitioning relocates almost the whole keyspace where a ring pays only the 1/n floor |
+//!
+//! Instruments do not need an article to exist. `/lab/` renders every one of
+//! them from `shared/instruments.rs`, which is where a toy is built and its
+//! cost measured before an article commits to it.
 //!
 //! Each instrument keeps its simulation in a `logic` submodule that is pure and
 //! compiles on every target, so `cargo test` covers the argument natively and the
@@ -21,7 +26,15 @@
 
 pub(crate) mod dtls_cid;
 pub(crate) mod isolated;
+pub(crate) mod partitioning;
 pub(crate) mod sram;
+
+// The bundle does not read the registry — it dispatches on the attribute it
+// finds in the DOM. Only the drift test below needs it; the lab generator
+// includes the same file independently.
+#[cfg(test)]
+#[path = "../../shared/instruments.rs"]
+pub(crate) mod registry;
 
 /// Severity of a log line, so a view can mark outcomes without re-deriving what
 /// happened. `Held` is the interesting one: a mechanism deliberately refusing to
@@ -89,6 +102,18 @@ impl Log {
     }
 }
 
+/// Whether `mount_all` has a component for this slug.
+///
+/// A hand-kept mirror of the match below, and deliberately so: Rust cannot make
+/// a match arm into data, so the registry and the dispatcher would otherwise
+/// drift in silence and the lab page would advertise a figure that never
+/// appears. This is the canary the drift test reads — it has to be updated in
+/// the same edit as the match, and the test fails loudly when it is not.
+#[cfg(test)]
+pub(crate) fn mounts(slug: &str) -> bool {
+    matches!(slug, "dtls-cid" | "sram" | "isolated" | "partitioning")
+}
+
 /// Mounts every instrument placeholder the page declares. A page with none —
 /// which is most articles — pays only this one query.
 #[cfg(target_arch = "wasm32")]
@@ -106,6 +131,13 @@ pub(crate) fn mount_all(doc: &web_sys::Document) {
         // point without the bundle. `mount_to` appends, so clear it first or the
         // reader sees both.
         match name.as_deref() {
+            Some("partitioning") => {
+                host.set_inner_html("");
+                leptos::mount::mount_to(host, || {
+                    leptos::view! { <partitioning::view::Partitioning /> }
+                })
+                .forget();
+            }
             Some("dtls-cid") => {
                 host.set_inner_html("");
                 leptos::mount::mount_to(host, || {
@@ -134,6 +166,30 @@ pub(crate) fn mount_all(doc: &web_sys::Document) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The lab page is generated from the registry; the bundle mounts from the
+    /// match arm. If they disagree, a reader gets a promise and a blank space.
+    #[test]
+    fn every_registered_instrument_has_a_mount() {
+        for instrument in registry::INSTRUMENTS {
+            assert!(
+                mounts(instrument.slug),
+                "{} is advertised but mount_all does not handle it",
+                instrument.slug
+            );
+        }
+    }
+
+    #[test]
+    fn nothing_mounts_that_is_not_registered() {
+        for slug in ["dtls-cid", "sram", "isolated", "partitioning"] {
+            assert!(
+                registry::INSTRUMENTS.iter().any(|i| i.slug == slug),
+                "{slug} mounts but is missing from the registry"
+            );
+        }
+        assert!(!mounts("does-not-exist"));
+    }
 
     #[test]
     fn levels_carry_their_own_class() {

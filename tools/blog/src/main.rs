@@ -10,6 +10,8 @@
 mod chrome;
 #[path = "../../../shared/navigation.rs"]
 mod navigation;
+#[path = "../../../shared/instruments.rs"]
+mod instruments;
 
 use std::{env, fs, path::PathBuf, sync::OnceLock};
 
@@ -153,6 +155,14 @@ fn main() {
         )
         .expect("write tag page");
     }
+
+    // The lab is deliberately unlisted: absent from the sitemap (which only
+    // walks `/`, `/articles/` and the posts), absent from the nav, linked from
+    // nowhere, and marked noindex. Reachable by anyone who knows the URL, which
+    // is the intended audience.
+    let lab_dir = out_root.join("lab");
+    fs::create_dir_all(&lab_dir).expect("create lab dir");
+    fs::write(lab_dir.join("index.html"), lab_page()).expect("write lab");
 
     fs::write(articles_dir.join("feed.xml"), atom_feed(&articles)).expect("write feed");
     fs::write(out_root.join("sitemap.xml"), sitemap(&articles)).expect("write sitemap");
@@ -375,6 +385,56 @@ fn shell(head: &str, body: &str) -> String {
         topbar = chrome::topbar("/"),
         panel = chrome::system_panel(&DIAGNOSTICS, PANEL_NOTE)
     )
+}
+
+/// The workbench. Every registered instrument, mounted on one page, whether or
+/// not an article has claimed it yet — so a toy can be built and its real cost
+/// measured before an article commits to carrying it.
+fn lab_page() -> String {
+    let head = "<title>Lab — Fabio Ellena</title>\
+<meta name=\"robots\" content=\"noindex, nofollow\">\
+<meta name=\"description\" content=\"Working instruments, attached and unattached.\">";
+
+    let sections: String = instruments::INSTRUMENTS
+        .iter()
+        .map(|i| {
+            let origin = match i.article {
+                Some(href) => format!(
+                    "<a href=\"{href}\">in an article ↗</a>"
+                ),
+                None => "<span class=\"lab-loose\">on the bench · no article yet</span>".to_string(),
+            };
+            format!(
+                "<section class=\"lab-item\" id=\"{slug}\">\
+<p class=\"eyebrow\"><a href=\"#{slug}\">{slug}</a> · {origin}</p>\
+<h2>{title}</h2>\
+<p class=\"lab-shows\">{shows}</p>\
+<figure class=\"diagram\"><div data-instrument=\"{slug}\">\
+<p class=\"inst-static\">This instrument needs the site's WebAssembly bundle, which has not loaded here.</p>\
+</div></figure></section>",
+                slug = i.slug,
+                title = esc(i.title),
+                shows = esc(i.shows),
+                origin = origin,
+            )
+        })
+        .collect();
+
+    let body = format!(
+        "<main><p class=\"eyebrow\">FBLLN/LAB</p>\
+<h1 class=\"title\">Instruments</h1>\
+<p class=\"post-meta\">{count} instruments · unlisted · noindex</p>\
+<article><p>Working models of things a static diagram cannot show. Each one keeps its \
+simulation in a pure Rust module compiled to WebAssembly, so the argument it makes is \
+covered by tests rather than asserted by a drawing.</p>\
+<p>An instrument only earns its place when a reader reliably gets the concept wrong from \
+a diagram, because a diagram costs an hour and an instrument costs weeks. Some of these \
+are already carried by an article; the rest are here to have their cost measured first.</p>\
+</article>{sections}</main>",
+        count = instruments::INSTRUMENTS.len(),
+    );
+
+    shell(head, &body)
 }
 
 fn article_page(a: &Article, newer: Option<&Article>, older: Option<&Article>) -> String {

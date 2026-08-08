@@ -249,6 +249,33 @@ figure.diagram figcaption code { font-family: var(--font-mono); font-size: 0.9em
   font: 400 .72rem/1.5 var(--font-mono); color: rgba(242,240,233,.5);
 }
 
+/* Partition load bars. Height encodes key count against the busiest partition,
+   so imbalance is a silhouette rather than a number to compare by eye. */
+.inst-bars { display: flex; align-items: flex-end; gap: 4px; height: 110px; padding: .9rem .9rem 0; }
+.inst-bars .bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; position: relative; }
+.inst-bars .bar-fill { width: 100%; background: repeating-linear-gradient(45deg, rgba(242,240,233,.6) 0 3px, rgba(242,240,233,.32) 3px 6px); border: 1px solid rgba(242,240,233,.4); border-bottom: 0; min-height: 2px; }
+.inst-bars .bar b { font: 700 .64rem/1.6 var(--font-mono); }
+.inst-bars .bar i { font: 400 .56rem/1 var(--font-mono); font-style: normal; letter-spacing: .06em; color: rgba(242,240,233,.5); }
+
+/* One cell per key. Relocation is the whole subject, so the only colour in the
+   field marks the keys that moved — the rest stay deliberately quiet. */
+.inst-keys { display: flex; flex-wrap: wrap; gap: 2px; padding: .9rem .9rem 0; }
+.inst-keys .key { width: 10px; height: 10px; border: 1px solid rgba(242,240,233,.3); }
+.inst-keys .key.moved { background: var(--signal); border-color: var(--signal); }
+.inst-legend i.key { width: 10px; height: 10px; }
+.inst-legend i.key.moved { background: var(--signal); border-color: var(--signal); }
+
+/* ── The lab. Unlisted page carrying every instrument, attached or not. ──── */
+.lab-item { margin: 3.5rem 0 0; padding-top: 2rem; border-top: 1px solid var(--line); }
+.lab-item h2 { font-family: var(--font-sans); font-weight: 800; font-size: 1.5rem; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 .7rem; }
+.lab-item .eyebrow { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .9rem; }
+.lab-item .eyebrow a { text-decoration: none; }
+.lab-item .eyebrow a:hover { color: var(--signal); }
+/* An instrument with no article yet is the normal state on a bench, not a
+   defect — it reads as muted rather than as a warning. */
+.lab-loose { color: var(--muted); }
+.lab-shows { max-width: 62ch; margin: 0 0 1.4rem; color: var(--muted); line-height: 1.55; }
+
 /* Static fallback, on paper: it is what a reader sees when the wasm bundle never
    loads, so it cannot assume the ink ground the mounted instrument brings with
    it. Replaced wholesale on mount. */
