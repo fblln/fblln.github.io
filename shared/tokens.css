@@ -1,0 +1,19 @@
+/* One definition of the design tokens for every route. Both surfaces used to
+   declare their own `:root` block, which is exactly how `--line` ended up at
+   0.3 on the portfolio and 0.18 in Writing while `shared/header.css` consumed
+   `var(--line)` for the mobile navigation and rendered two different hairlines
+   from one rule. Reading surfaces that want the lighter line ask for
+   `--line-soft` by name instead of redefining what `--line` means.
+
+   Mirrored by `design-system/src/styles/tokens.css`; this file is the source of
+   truth and any change here lands there in the same commit. */
+:root {
+  color-scheme: light;
+  --ink: #0a0a0a;
+  --paper: #f2f0e9;
+  --signal: #ff3b00;
+  --line: rgba(10, 10, 10, 0.3);
+  --line-soft: rgba(10, 10, 10, 0.18);
+  --muted: #65635e;
+  --pad: clamp(1rem, 3vw, 2.5rem);
+}

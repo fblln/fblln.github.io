@@ -1,10 +1,6 @@
 :root {
-  --ink: #0a0a0a;
-  --paper: #f2f0e9;
-  --signal: #ff3b00;
-  --line: rgba(10, 10, 10, 0.18);
-  --muted: #65635e;
-  --pad: clamp(1rem, 3vw, 2.5rem);
+  /* Design tokens live in shared/tokens.css. These two are Writing-only: the
+     code surface is the one place this site paints on a dark background. */
   --code-bg: #2b303b;
   --code-font: var(--font-mono);
 }
@@ -16,7 +12,7 @@ body {
   color: var(--ink);
   font: 400 1.15rem/1.6 var(--font-sans);
 }
-a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; text-decoration-color: var(--line); }
+a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; text-decoration-color: var(--line-soft); }
 a:hover { color: var(--signal); text-decoration-color: var(--signal); }
 ::selection { background: var(--signal); color: var(--paper); }
 
@@ -27,14 +23,14 @@ h1.title { font-family: var(--font-sans); font-weight: 800; font-size: clamp(2re
 /* .post-meta, not .meta: syntect emits code tokens with classes like "meta group rust",
    so a bare .meta rule leaks into code blocks and flex-scrambles them. */
 .post-meta { font: 500 0.8rem/1 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; margin: 0 0 2.5rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
-.post-meta .tag { text-decoration: none; border: 1px solid var(--line); padding: 0.22rem 0.5rem; border-radius: 2px; }
+.post-meta .tag { text-decoration: none; border: 1px solid var(--line-soft); padding: 0.22rem 0.5rem; border-radius: 2px; }
 .post-meta .tag:hover { border-color: var(--signal); color: var(--signal); }
 
 /* Headline furniture can use the full page measure, but continuous prose stays
    narrow enough to preserve the reader's place when moving between lines. */
 article { max-width: 41rem; }
 article h2, article h3 { position: relative; font-family: var(--font-sans); letter-spacing: -0.01em; line-height: 1.2; margin: 2.6rem 0 0.9rem; }
-article h2 .anchor, article h3 .anchor { position: absolute; left: -1.15rem; text-decoration: none; color: var(--line); opacity: 0; transition: opacity 0.12s; }
+article h2 .anchor, article h3 .anchor { position: absolute; left: -1.15rem; text-decoration: none; color: var(--line-soft); opacity: 0; transition: opacity 0.12s; }
 article h2:hover .anchor, article h3:hover .anchor, article .anchor:focus { opacity: 1; color: var(--signal); }
 @media (max-width: 34rem) { article .anchor { display: none; } }
 article h2 { font-size: 1.6rem; font-weight: 800; }
@@ -47,7 +43,7 @@ article blockquote { margin: 2rem 0; padding: 0.4rem 0 0.4rem 1.3rem; border-lef
 /* Markdown wraps quote text in a paragraph. Reset its global rhythm so the
    blockquote padding, rather than a trailing paragraph margin, sizes the callout. */
 article blockquote p { margin: 0; }
-article hr { border: none; border-top: 1px solid var(--line); margin: 3rem 0; }
+article hr { border: none; border-top: 1px solid var(--line-soft); margin: 3rem 0; }
 
 article :not(pre) > code { font-family: var(--code-font); font-size: 0.86em; background: rgba(10, 10, 10, 0.06); padding: 0.12em 0.38em; border-radius: 3px; }
 pre.code { background: var(--code-bg); color: #c0c5ce; border-radius: 6px; padding: 1.1rem 1.2rem; overflow-x: auto; margin: 1.8rem 0; font-size: 0.86rem; line-height: 1.6; tab-size: 4; -webkit-overflow-scrolling: touch; }
@@ -83,9 +79,9 @@ figure.codeblock figcaption .copy:hover { color: #e6e9ee; border-color: rgba(255
 
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.8rem 0; }
 article table { border-collapse: collapse; width: 100%; margin: 0; font-size: 0.92rem; }
-article th, article td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; text-align: left; }
+article th, article td { border: 1px solid var(--line-soft); padding: 0.5rem 0.7rem; text-align: left; }
 
-.toc { border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2.5rem; font-size: 0.92rem; }
+.toc { border: 1px solid var(--line-soft); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2.5rem; font-size: 0.92rem; }
 .toc-title { font: 700 0.7rem/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
 .toc ul { column-count: 2; column-gap: 2rem; list-style: none; margin: 0; padding: 0; }
 .toc li { break-inside: avoid; margin: 0 0 0.6rem; }
@@ -100,7 +96,7 @@ article th, article td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; 
    and making the following paragraph look like the destination. */
 article h2[id], article h3[id] { scroll-margin-top: calc(64px + 1.5rem); }
 
-.post-nav { display: flex; justify-content: space-between; gap: 1.5rem; margin: 3.5rem 0 0; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+.post-nav { display: flex; justify-content: space-between; gap: 1.5rem; margin: 3.5rem 0 0; padding-top: 1.6rem; border-top: 1px solid var(--line-soft); }
 .post-nav a { text-decoration: none; max-width: 46%; }
 .post-nav .newer { margin-left: auto; text-align: right; }
 .post-nav .pn-dir { display: block; font: 700 0.7rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
@@ -108,13 +104,13 @@ article h2[id], article h3[id] { scroll-margin-top: calc(64px + 1.5rem); }
 .post-nav a:hover .pn-title { color: var(--signal); }
 
 .post-list { list-style: none; margin: 0; padding: 0; }
-.post-item { padding: 1.6rem 0; border-top: 1px solid var(--line); }
-.post-item:last-child { border-bottom: 1px solid var(--line); }
+.post-item { padding: 1.6rem 0; border-top: 1px solid var(--line-soft); }
+.post-item:last-child { border-bottom: 1px solid var(--line-soft); }
 .post-item a.post-title { font-family: var(--font-sans); font-weight: 800; font-size: 1.4rem; text-decoration: none; letter-spacing: -0.01em; display: inline-block; margin-bottom: 0.4rem; }
 .post-item a.post-title:hover { color: var(--signal); }
 .post-item p { margin: 0.3rem 0 0.6rem; color: #3a3a38; }
 
-footer.site { border-top: 1px solid var(--line); padding: 1.5rem clamp(1rem, 4vw, 2rem); font: 500 0.72rem/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+footer.site { border-top: 1px solid var(--line-soft); padding: 1.5rem clamp(1rem, 4vw, 2rem); font: 500 0.72rem/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 footer.site a { text-decoration: none; }
 
 /* Instrumentation figures. Diagrams are authored as inline SVG in the Markdown

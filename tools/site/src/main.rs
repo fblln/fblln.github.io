@@ -2,10 +2,40 @@
 //! hydrate-mode WASM bundle; this post-build step replaces only `<body>` with
 //! Leptos SSR output whose hydration markers exactly match that bundle.
 
+#[path = "../../../shared/chrome.rs"]
+mod chrome;
+#[path = "../../../shared/navigation.rs"]
+mod navigation;
+
 use std::{
     env, fs,
     path::{Path, PathBuf},
 };
+
+/// Diagnostics the portfolio can state at build time. The three ids are the
+/// cells the browser build overwrites once it can actually measure them; their
+/// placeholders are deliberate, deterministic values rather than blanks so the
+/// panel reads correctly with no JavaScript at all.
+const DIAGNOSTICS: [(&str, &str, &str); 9] = [
+    ("", "APPLICATION", "LEPTOS SSG/HYDRATE"),
+    ("", "TARGET", "WASM32-UNKNOWN-UNKNOWN"),
+    ("fact-engine", "BROWSER ENGINE", "Browser VM"),
+    ("fact-boot", "BOOT TO WASM ENTRY", "STATIC"),
+    ("fact-wasm", "WASM RECEIVED", "80 KiB"),
+    ("", "RENDERER", "STATIC HTML + DOM"),
+    ("", "BUNDLE BUDGET", "≤ 500 KIB GZIP"),
+    ("", "APP CODE", "100% RUST"),
+    ("", "BUILD", build_sha()),
+];
+
+const fn build_sha() -> &'static str {
+    match option_env!("BUILD_SHA") {
+        Some(sha) => sha,
+        None => "LOCAL",
+    }
+}
+
+const PANEL_NOTE: &str = "The browser received a Rust application compiled to WebAssembly. Project data is embedded at build time; there is no client-side GitHub API dependency.";
 
 const BOOT: &str = "<main id=\"boot\" class=\"boot\" aria-labelledby=\"boot-title\"><span>FBLLN/WASM</span><h1 id=\"boot-title\">INITIALIZING RUST RUNTIME</h1><span class=\"boot-line\"></span></main>";
 const NO_SCRIPT: &str = "<noscript><style>#boot{display:none}</style><p class=\"ssg-notice\">Interactive controls require JavaScript; all portfolio content remains available below.</p></noscript>";
@@ -44,9 +74,14 @@ fn main() {
 fn inject_static_body(document: &str, app: &str) -> Option<String> {
     let open = document.find("<body>")? + "<body>".len();
     let close = document.rfind("</body>")?;
+    // Chrome sits outside `#app` on purpose: it is emitted from the same shared
+    // builder the article generator uses, so keeping it out of Leptos' hydration
+    // cursor is what lets one source serve both surfaces.
+    let topbar = chrome::topbar("");
+    let panel = chrome::system_panel(&DIAGNOSTICS, PANEL_NOTE);
     (open <= close).then(|| {
         format!(
-            "{}<body>{BOOT}{NO_SCRIPT}<div id=\"app\">{app}</div></body>{}",
+            "{}<body>{topbar}{BOOT}{NO_SCRIPT}<div id=\"app\">{app}</div>{panel}</body>{}",
             &document[..document.find("<body>").expect("body open")],
             &document[close + "</body>".len()..]
         )

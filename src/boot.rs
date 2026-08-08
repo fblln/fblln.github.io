@@ -28,6 +28,10 @@ pub fn run() {
     }
     #[cfg(not(feature = "hydrate"))]
     leptos::mount::mount_to_body(|| view! { <crate::App /> });
+    // The chrome ships outside the hydration root, so it gains behaviour here
+    // rather than through the reactive graph — the same call article pages make.
+    crate::panel::wire();
+    crate::panel::publish_measurements();
     scroll_to_initial_fragment();
     reveal_site(boot_time);
 }

@@ -2,8 +2,14 @@
 mod articles;
 #[cfg(target_arch = "wasm32")]
 mod boot;
-#[path = "../shared/navigation.rs"]
-mod navigation;
+#[cfg(target_arch = "wasm32")]
+mod panel;
+/// The static render emits the same footer button, but there is no document to
+/// open a panel in until the browser build attaches one.
+#[cfg(not(target_arch = "wasm32"))]
+mod panel {
+    pub fn open() {}
+}
 mod projects;
 mod runtime;
 
@@ -18,20 +24,6 @@ use runtime::PRODUCTION_WASM_SIZE;
 
 #[cfg(target_arch = "wasm32")]
 pub use boot::run;
-#[component]
-fn PrimaryNav() -> impl IntoView {
-    /* Desktop and mobile navigation intentionally render from the same fixed
-    data. Keeping this as a component also gives the eventual static renderer a
-    clean seam instead of forcing it to reproduce five anchors by hand. */
-    view! {
-        <nav aria-label="Primary navigation">
-            {navigation::PRIMARY_NAV
-                .into_iter()
-                .map(|item| view! { <a href=item.href>{item.label}</a> })
-                .collect_view()}
-        </nav>
-    }
-}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -39,29 +31,9 @@ pub fn App() -> impl IntoView {
     let query = RwSignal::new(String::new());
     let active = RwSignal::new(0usize);
     let expanded = RwSignal::new(None::<usize>);
-    let system_open = RwSignal::new(false);
-    /* Static rendering and hydration must begin with byte-for-byte equivalent
-    text nodes. Client measurements replace these deterministic values only
-    after the reactive runtime has attached to the existing document. */
-    let boot_time = RwSignal::new("STATIC".to_string());
-    let wasm_size = RwSignal::new(PRODUCTION_WASM_SIZE.to_string());
-    let engine = RwSignal::new("Browser VM".to_string());
-
-    #[cfg(target_arch = "wasm32")]
-    Effect::new(move |_| {
-        boot_time.set(format!("{:.1} ms", runtime::now_ms()));
-        wasm_size
-            .set(runtime::wasm_transfer_size().unwrap_or_else(|| PRODUCTION_WASM_SIZE.to_string()));
-        engine.set(runtime::browser_engine());
-    });
 
     #[cfg(target_arch = "wasm32")]
     {
-        Effect::new(move |_| {
-            if system_open.get() {
-                runtime::focus_element("system-close");
-            }
-        });
         Effect::new(move |_| {
             if expanded.get().is_some() {
                 runtime::focus_element("case-close");
@@ -77,7 +49,7 @@ pub fn App() -> impl IntoView {
 
             if event.key() == "Escape" {
                 expanded.set(None);
-                system_open.set(false);
+                panel::close();
                 return;
             }
             if typing {
@@ -99,7 +71,7 @@ pub fn App() -> impl IntoView {
                     active.update(|index| *index = (*index + PROJECTS.len() - 1) % PROJECTS.len())
                 }
                 "Enter" => expanded.set(Some(active.get_untracked())),
-                "s" | "S" => system_open.update(|open| *open = !*open),
+                "s" | "S" => panel::toggle(),
                 _ => {}
             }
         });
@@ -113,23 +85,6 @@ pub fn App() -> impl IntoView {
     view! {
         <div class="site-shell">
             <a class="skip-link" href="#main-content">"Skip to main content"</a>
-            <header class="topbar">
-                <a class="wordmark" href="#top" aria-label="Fabio Ellena home">"FE/26"</a>
-                <PrimaryNav />
-                <button
-                    class="runtime-button"
-                    class:active=move || system_open.get()
-                    aria-controls="system-panel"
-                    aria-expanded=move || system_open.get().to_string()
-                    on:click=move |_| system_open.update(|open| *open = !*open)
-                >
-                    <span class="status-dot"></span>"WASM/ACTIVE"
-                </button>
-                <details class="mobile-nav">
-                    <summary aria-label="Toggle navigation menu">"MENU"</summary>
-                    <PrimaryNav />
-                </details>
-            </header>
 
             <main id="main-content" tabindex="-1">
                 <section id="top" class="hero section-grid">
@@ -141,8 +96,12 @@ pub fn App() -> impl IntoView {
                             <span>"LEPTOS SSG"</span>
                             <span>"RUST/WASM"</span>
                             <span>"STATIC HTML"</span>
-                            <span>{move || format!("{} WASM", wasm_size.get())}</span>
-                            <span>{move || format!("BOOT {}", boot_time.get())}</span>
+                            // Deterministic at build time, overwritten in place
+                            // once the browser can measure it — the same
+                            // mechanism the diagnostics panel uses, so there is
+                            // one path for runtime facts rather than two.
+                            <span id="hero-wasm">{format!("{PRODUCTION_WASM_SIZE} WASM")}</span>
+                            <span id="hero-boot">"BOOT STATIC"</span>
                         </div>
                         <div class="hero-bottom">
                             <p>"I build distributed systems, telemetry platforms, and local-first AI tools for problems where scale, evidence, and reliability are not optional."</p>
@@ -342,24 +301,10 @@ pub fn App() -> impl IntoView {
                 <span>"© 2026 FABIO ELLENA"</span>
                 <a href="/articles/">"WRITING ↗"</a>
                 <span>"FULL RUST · LEPTOS · WASM32"</span>
-                <button on:click=move |_| system_open.set(true)>"INSPECT RUNTIME [S]"</button>
+                // The panel lives outside the hydration root, so this reaches it
+                // through the same DOM entry point the topbar button uses.
+                <button on:click=move |_| panel::open()>"INSPECT RUNTIME [S]"</button>
             </footer>
-
-            <aside id="system-panel" class="system-panel" class:open=move || system_open.get() hidden=move || !system_open.get() aria-label="Runtime diagnostics">
-                <div class="panel-head"><span>"SYSTEM/DIAGNOSTICS"</span><button id="system-close" on:click=move |_| system_open.set(false)>"CLOSE [ESC]"</button></div>
-                <div class="diagnostic-grid">
-                    <div><span>"APPLICATION"</span><strong>"LEPTOS SSG/HYDRATE"</strong></div>
-                    <div><span>"TARGET"</span><strong>"WASM32-UNKNOWN-UNKNOWN"</strong></div>
-                    <div><span>"BROWSER ENGINE"</span><strong>{move || engine.get()}</strong></div>
-                    <div><span>"BOOT TO WASM ENTRY"</span><strong>{move || boot_time.get()}</strong></div>
-                    <div><span>"WASM RECEIVED"</span><strong>{move || wasm_size.get()}</strong></div>
-                    <div><span>"RENDERER"</span><strong>"STATIC HTML + DOM"</strong></div>
-                    <div><span>"BUNDLE BUDGET"</span><strong>"≤ 500 KIB GZIP"</strong></div>
-                    <div><span>"APP CODE"</span><strong>"100% RUST"</strong></div>
-                    <div><span>"BUILD"</span><strong>{option_env!("BUILD_SHA").unwrap_or("LOCAL")}</strong></div>
-                </div>
-                <p>"The browser received a Rust application compiled to WebAssembly. Project data is embedded at build time; there is no client-side GitHub API dependency."</p>
-            </aside>
 
             <div id="case-study" class="case-overlay" class:open=move || expanded.get().is_some() hidden=move || expanded.get().is_none()>
                 <button class="overlay-backdrop" aria-label="Close case study" on:click=move |_| expanded.set(None)></button>
@@ -404,13 +349,17 @@ mod tests {
     #[cfg(feature = "ssr")]
     use super::render_static_app;
 
+    /// The hydration root must carry the portfolio's own content and Leptos'
+    /// markers, and must *not* carry the shared chrome — that ships outside
+    /// `#app` so both surfaces can render it from one source.
     #[cfg(feature = "ssr")]
     #[test]
     fn static_render_contains_content_and_hydration_markers() {
         let html = render_static_app();
 
         assert!(html.contains("SOFTWARE SHOULD"));
-        assert!(html.contains("LEPTOS SSG"));
         assert!(html.contains("<!>"));
+        assert!(!html.contains("class=\"topbar\""));
+        assert!(!html.contains("id=\"system-panel\""));
     }
 }

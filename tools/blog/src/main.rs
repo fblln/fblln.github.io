@@ -6,6 +6,8 @@
 //! (an explicit arg overrides it for manual runs). Code blocks are highlighted
 //! at build time with syntect — no client-side JS.
 
+#[path = "../../../shared/chrome.rs"]
+mod chrome;
 #[path = "../../../shared/navigation.rs"]
 mod navigation;
 
@@ -21,6 +23,7 @@ use syntect::util::LinesWithEndings;
 const BASE: &str = "https://fblln.github.io";
 const AUTHOR: &str = "Fabio Ellena";
 const READING_CSS: &str = include_str!("../article.css");
+const SHARED_TOKENS_CSS: &str = include_str!("../../../shared/tokens.css");
 const SHARED_TYPOGRAPHY_CSS: &str = include_str!("../../../shared/typography.css");
 const SHARED_HEADER_CSS: &str = include_str!("../../../shared/header.css");
 
@@ -338,32 +341,22 @@ fn hlevel(h: HeadingLevel) -> u8 {
 /// section fragments gain a root prefix because article pages live below
 /// `/articles/`; Writing stays absolute. The runtime button is enhanced by the
 /// shared WASM bundle when available and remains harmless without JavaScript.
-fn topbar() -> String {
-    let links: String = navigation::PRIMARY_NAV
-        .iter()
-        .map(|item| {
-            let href = if item.href.starts_with('#') {
-                format!("/{}", item.href)
-            } else {
-                item.href.to_string()
-            };
-            format!("<a href=\"{href}\">{}</a>", item.label)
-        })
-        .collect();
-    format!("<header class=\"topbar\">\
-<a class=\"wordmark\" href=\"/\" aria-label=\"Fabio Ellena home\">FE/26</a>\
-<nav aria-label=\"Primary navigation\">{links}</nav>\
-<button class=\"runtime-button\" type=\"button\" aria-controls=\"system-panel\" aria-expanded=\"false\"><span class=\"status-dot\"></span>WASM/ACTIVE</button>\
-<details class=\"mobile-nav\"><summary aria-label=\"Toggle navigation menu\">MENU</summary>\
-<nav aria-label=\"Primary navigation\">{links}</nav></details>\
-</header>")
-}
+/// Article pages carry the same diagnostics affordance as the portfolio, stating
+/// what this surface actually is rather than presenting a button-shaped dead end.
+const DIAGNOSTICS: [(&str, &str, &str); 4] = [
+    ("", "APPLICATION", "STATIC HTML + WASM"),
+    ("", "TARGET", "WASM32-UNKNOWN-UNKNOWN"),
+    ("", "RENDERER", "DOM + STATIC HTML"),
+    ("", "ENHANCEMENTS", "CODE COPY · READING PROGRESS"),
+];
+
+const PANEL_NOTE: &str = "The writing surface is pre-rendered for fast, resilient reading. This Rust/WebAssembly bundle adds the interactive details after the page is available.";
 
 /// Composes Writing-specific rules around the shared type and header contracts.
 /// The order matters: article layout may specialize base tokens, then the
 /// shared header reasserts its chrome without duplicating either source file.
 fn article_css(code_css: &str) -> String {
-    format!("{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n")
+    format!("{SHARED_TOKENS_CSS}\n{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n")
 }
 
 const FOOTER: &str =
@@ -378,7 +371,9 @@ fn shell(head: &str, body: &str) -> String {
 <link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 fill=%22%230a0a0a%22/><path d=%22M14 12h36v8H23v9h22v8H23v15h-9z%22 fill=%22white%22/></svg>\">{head}\
 <link rel=\"stylesheet\" href=\"/articles/article.css\">\
 <link rel=\"alternate\" type=\"application/atom+xml\" href=\"/articles/feed.xml\" title=\"Fabio Ellena — Writing\">\
-</head><body>{topbar}{body}{FOOTER}{enhance}</body></html>", topbar = topbar()
+</head><body>{topbar}{body}{FOOTER}{panel}{enhance}</body></html>",
+        topbar = chrome::topbar("/"),
+        panel = chrome::system_panel(&DIAGNOSTICS, PANEL_NOTE)
     )
 }
 
@@ -589,25 +584,15 @@ fn slug(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        article_css, prose_words, render_tags, topbar, SHARED_HEADER_CSS, SHARED_TYPOGRAPHY_CSS,
+        article_css, prose_words, render_tags, READING_CSS, SHARED_HEADER_CSS,
+        SHARED_TOKENS_CSS, SHARED_TYPOGRAPHY_CSS,
     };
 
     const DESIGN_SYSTEM_PROSE_CSS: &str =
         include_str!("../../../design-system/src/components/Prose/Prose.css");
-
-    /// Static pages live below `/articles/`, so leaving fragment-only links in
-    /// either desktop or mobile navigation would scroll the wrong document.
-    #[test]
-    fn topbar_rebases_home_fragments_in_both_navigation_variants() {
-        let html = topbar();
-
-        for href in ["/#work", "/#capabilities", "/#experience", "/#contact"] {
-            assert_eq!(html.matches(&format!("href=\"{href}\"")).count(), 2);
-        }
-        assert_eq!(html.matches("href=\"/articles/\"").count(), 2);
-        assert!(!html.contains("href=\"#"));
-        assert!(html.contains("aria-controls=\"system-panel\""));
-    }
+    const PORTFOLIO_CSS: &str = include_str!("../../../styles.css");
+    const DESIGN_SYSTEM_TOKENS_CSS: &str =
+        include_str!("../../../design-system/src/styles/tokens.css");
 
     /// Fonts must be declared before article layout consumes the variables, and
     /// the header must follow that layout so its border/type contract wins over
@@ -615,13 +600,33 @@ mod tests {
     #[test]
     fn article_styles_preserve_shared_contract_order() {
         let css = article_css("/* syntax */");
+        let tokens = css.find(SHARED_TOKENS_CSS).expect("tokens css");
         let typography = css.find(SHARED_TYPOGRAPHY_CSS).expect("typography css");
         let header = css.find(SHARED_HEADER_CSS).expect("header css");
         let syntax = css.find("/* syntax */").expect("syntax css");
 
-        assert_eq!(typography, 0);
+        assert_eq!(tokens, 0);
+        assert!(tokens < typography);
         assert!(typography < header);
         assert!(header < syntax);
+    }
+
+    /// `shared/header.css` styles the mobile navigation with `var(--line)` on
+    /// both surfaces. While each surface declared its own `:root`, that single
+    /// rule rendered two different hairlines — so neither surface may redefine a
+    /// shared token, and the reading surface asks for `--line-soft` by name.
+    #[test]
+    fn design_tokens_have_exactly_one_definition_per_surface() {
+        for token in ["--ink:", "--paper:", "--signal:", "--line:", "--muted:", "--pad:"] {
+            assert!(SHARED_TOKENS_CSS.contains(token), "{token} missing from shared tokens");
+            assert!(!PORTFOLIO_CSS.contains(token), "{token} redefined in styles.css");
+            assert!(!READING_CSS.contains(token), "{token} redefined in article.css");
+        }
+        assert!(SHARED_TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
+        assert!(SHARED_TOKENS_CSS.contains("--line-soft: rgba(10, 10, 10, 0.18);"));
+        // The design system mirrors the site; drift here is a release blocker.
+        assert!(DESIGN_SYSTEM_TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
+        assert!(DESIGN_SYSTEM_TOKENS_CSS.contains("--line-soft: rgba(10, 10, 10, 0.18);"));
     }
 
     /// Fragment identifiers are emitted on article headings, not their anchor
