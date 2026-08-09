@@ -84,10 +84,9 @@ runtime to assemble it. GitHub Pages serves files.
 
 ## What "shared" means here, precisely
 
-`shared/` is not a crate. It is not a package, it has no `Cargo.toml`, no
-version number, and nothing depends on it in the way software usually depends on
-things. It is six files, and the programs that need them reach across the
-directory tree and compile them in place:
+For most of this site's life `shared/` was not a crate. No `Cargo.toml`, no
+version, no dependency edge — just six files, which the programs that needed
+them reached across the directory tree and compiled in place:
 
 ```rust
 #[path = "../../../shared/chrome.rs"]
@@ -96,63 +95,93 @@ mod chrome;
 mod navigation;
 ```
 
-That is the whole mechanism. `#[path]` tells the Rust compiler where a module's
-source lives when it isn't where the module tree says it should be. `tools/site`
-says those two lines. `tools/blog` says them plus one more for the instrument
-registry. Each program compiles its own private copy of the same text.
+`#[path]` tells the Rust compiler where a module's source lives when it isn't
+where the module tree says it should be. And it is worth being precise about
+what that does, because the obvious objection to it is wrong: **nothing is
+copied.** There is one `chrome.rs` on disk. Three programs compile it, none of
+them holds a duplicate, and no edit can land in one copy and miss another. Drift
+was already impossible.
 
-For CSS there isn't even a module system to borrow, so the generator reads the
-files as string constants at compile time and concatenates them:
+So the argument for leaving it alone was a good one, and I made it for a long
+time. A shared crate makes sharing *legible*. It does not make it any more
+*true*.
+
+What changed my mind was the second declaration in that snippet.
+
+`tools/site` renders the portfolio's chrome. It never mentions navigation —
+not once, anywhere in the file. It declares that module because `shared/chrome.rs`
+contains this line:
 
 ```rust
-const SHARED_TOKENS_CSS: &str = include_str!("../../../shared/tokens.css");
-const SHARED_TYPOGRAPHY_CSS: &str = include_str!("../../../shared/typography.css");
-const SHARED_HEADER_CSS: &str = include_str!("../../../shared/header.css");
+use crate::navigation::PRIMARY_NAV;
 ```
 
-`include_str!` is a macro that pastes a file's contents into the binary as a
-string literal, at build time, with no I/O and no runtime cost. If the file is
-missing or renamed, the build fails — the same failure a missing import gives
-you, from a plain text file.
+`crate::`, in a file included by path, means *the consumer's* crate root. So
+`chrome.rs` doesn't merely get compiled into its host — it makes demands of the
+host's module tree. Every program that wants a header has to know, and restate,
+what the header privately depends on. Nothing reports this; you get an
+unresolved-module error naming something you've never heard of.
+
+That is the failure files cannot fix, and it compounds. Any shared file that
+grows a dependency edits every consumer.
+
+So `shared/` is a crate now: `fblln-shared`, no dependencies of its own, and
+callers name only what they actually use.
+
+```rust
+use fblln_shared::{HEADER_CSS, TOKENS_CSS, TYPOGRAPHY_CSS, chrome, instruments};
+```
+
+The stylesheets came along with it. CSS has no module system to borrow, so the
+crate reads them at compile time and exports them as strings:
+
+```rust
+pub const TOKENS_CSS: &str = include_str!("tokens.css");
+```
+
+`include_str!` pastes a file's contents into the binary as a string literal at
+build time — no I/O, no runtime cost, and a build failure if the file moves.
+That line used to be written out with a `../../../` prefix in every crate that
+wanted it. Now it exists once, and `TOKENS_CSS` is a name rather than a path.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 176" role="img" aria-label="A solid block on the left labelled shared, listing chrome.rs, navigation.rs and instruments.rs. Three arrows fan out to the right into three outlined rows: the portfolio crate compiled to WebAssembly, tools slash site compiled as a native binary, and tools slash blog compiled as a native binary. A note reads: no crate, no package, no version number, and the compiler simply reads the same file three times.">
-  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ONE FILE &middot; COMPILED INTO THREE DIFFERENT PROGRAMS</text>
+<svg viewBox="0 0 620 176" role="img" aria-label="A solid block on the left labelled fblln-shared, listing the chrome, navigation and instruments modules plus three stylesheets. Three arrows fan out to the right into three outlined rows: tools slash site as a native binary, tools slash blog as a native binary, and the portfolio crate as a dev-dependency only. A note reads: the registry ships zero bytes to a reader, and chrome's private dependency stopped leaking.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ONE CRATE &middot; THREE CONSUMERS, ONE OF THEM TEST-ONLY</text>
   <g font-family="var(--font-mono)" font-size="9" text-anchor="middle">
     <rect x="0" y="26" width="150" height="126" fill="var(--signal)"/>
-    <text x="75" y="52" fill="var(--paper)">shared/</text>
-    <text x="75" y="78" fill="var(--paper)">chrome.rs</text>
-    <text x="75" y="96" fill="var(--paper)">navigation.rs</text>
-    <text x="75" y="114" fill="var(--paper)">instruments.rs</text>
+    <text x="75" y="48" fill="var(--paper)">fblln-shared</text>
+    <text x="75" y="72" fill="var(--paper)">chrome</text>
+    <text x="75" y="90" fill="var(--paper)">navigation</text>
+    <text x="75" y="108" fill="var(--paper)">instruments</text>
+    <text x="75" y="130" fill="var(--paper)">3 STYLESHEETS</text>
     <rect x="340" y="26" width="280" height="34" fill="none" stroke="var(--line)"/>
-    <text x="480" y="47" fill="var(--ink)">fblln-portfolio &rarr; WASM32</text>
+    <text x="480" y="47" fill="var(--ink)">tools/site &rarr; NATIVE BINARY</text>
     <rect x="340" y="72" width="280" height="34" fill="none" stroke="var(--line)"/>
-    <text x="480" y="93" fill="var(--ink)">tools/site &rarr; NATIVE BINARY</text>
+    <text x="480" y="93" fill="var(--ink)">tools/blog &rarr; NATIVE BINARY</text>
     <rect x="340" y="118" width="280" height="34" fill="none" stroke="var(--line)"/>
-    <text x="480" y="139" fill="var(--ink)">tools/blog &rarr; NATIVE BINARY</text>
+    <text x="480" y="139" fill="var(--ink)">fblln-portfolio &rarr; DEV-DEPENDENCY</text>
   </g>
   <g stroke="var(--ink)" fill="none">
     <path d="M150 89 L180 89 L180 43 L334 43 M328 39 L334 43 L328 47"/>
     <path d="M150 89 L334 89 M328 85 L334 89 L328 93"/>
     <path d="M150 89 L180 89 L180 135 L334 135 M328 131 L334 135 L328 139"/>
   </g>
-  <text x="0" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">#[path] &mdash; no crate, no package, no version</text>
-  <text x="620" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="end">the compiler reads the same file three times</text>
+  <text x="0" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the registry ships zero bytes to a reader</text>
+  <text x="620" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="end">chrome&rsquo;s private dependency stopped leaking</text>
 </svg>
-<figcaption>Each arrow is a separate compilation of the same source text into a different target. The wasm bundle and the two build tools never link against each other; they only ever agree because they were built from identical bytes.</figcaption>
+<figcaption>Each arrow is a separate compilation of the same source into a different target; the three programs never link against each other. The bottom one is a dev-dependency, because only a test reads the instrument registry — the shipped bundle dispatches on a DOM attribute and carries none of it.</figcaption>
 </figure>
 
-This looks primitive, and the primitiveness is the point. The alternative was a
-fourth crate with a manifest, a version, and a place in three dependency graphs
-— ceremony whose entire payoff would be moving the same 300 lines to a different
-folder. A shared crate makes sharing *legible*. It does not make it any more
-*true*. What actually prevents drift is that there is one file, and I cannot edit
-one copy of it.
+Note what did *not* improve: correctness. One file was already one file, and no
+bug was ever fixed by this. What the crate bought is a private dependency
+staying private, and `../../../` ceasing to be load-bearing. That is a real but
+modest return — which is why it took a fourth `include_str!` appearing in a
+second crate before I thought it was worth the manifest.
 
-The cost is real and worth naming: `#[path]` is invisible to `cargo tree`,
-nothing stops a fourth consumer from silently appearing, and the file gets
-compiled once per consumer instead of once. At six files and three consumers,
-that is a rounding error. At sixty, it would be a crate.
+The version I'd defend without hesitation is the smaller decision inside it:
+`fblln-shared` has no dependencies of its own, and I intend to keep it that way.
+Anything that needs a crate to express is not something both surfaces agree
+about. It is something one of them owns.
 
 ## Why Rust, specifically
 
@@ -231,15 +260,15 @@ the library, and into the shipped bundle **not at all**:
 
 ```rust
 #[cfg(test)]
-#[path = "../../shared/instruments.rs"]
-pub(crate) mod registry;
+pub(crate) use fblln_shared::instruments as registry;
 ```
 
 The browser doesn't need the list. It finds a `data-instrument="sram"` attribute
 in the DOM and dispatches on the string. So the registry costs bytes in the build
-tools, where bytes are free, and zero bytes in the thing you downloaded. A test
-asserts the dispatcher handles every registered slug, which is what stops the lab
-page from advertising a figure that never appears.
+tools, where bytes are free, and zero bytes in the thing you downloaded — which
+is also why `fblln-shared` is a dev-dependency of the portfolio crate rather than
+a dependency. A test asserts the dispatcher handles every registered slug, which
+is what stops the lab page from advertising a figure that never appears.
 
 That is the shape of the whole argument for `cfg`: it lets one body of source
 code have genuinely different *contents* depending on where it's going, checked
@@ -268,7 +297,7 @@ Because the stylesheets are string constants inside a Rust binary, the test suit
 can assert things about the CSS:
 
 ```rust
-assert!(SHARED_TOKENS_CSS.contains(token));
+assert!(TOKENS_CSS.contains(token));
 assert!(!PORTFOLIO_CSS.contains(token), "{token} redefined in styles.css");
 assert!(!READING_CSS.contains(token), "{token} redefined in article.css");
 assert!(DESIGN_SYSTEM_TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
@@ -363,7 +392,7 @@ matters:
 
 ```rust
 fn article_css(code_css: &str) -> String {
-    format!("{SHARED_TOKENS_CSS}\n{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n")
+    format!("{TOKENS_CSS}\n{TYPOGRAPHY_CSS}\n{READING_CSS}\n{HEADER_CSS}\n{code_css}\n")
 }
 ```
 

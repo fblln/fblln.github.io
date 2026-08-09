@@ -2,11 +2,7 @@
 //! hydrate-mode WASM bundle; this post-build step replaces only `<body>` with
 //! Leptos SSR output whose hydration markers exactly match that bundle.
 
-#[path = "../../../shared/chrome.rs"]
-mod chrome;
-#[path = "../../../shared/navigation.rs"]
-mod navigation;
-
+use fblln_shared::chrome;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -202,7 +198,7 @@ mod tests {
         remove_redundant_wasm_preload,
     };
 
-    const SHARED_TYPOGRAPHY_CSS: &str = include_str!("../../../shared/typography.css");
+    use fblln_shared::TYPOGRAPHY_CSS;
 
     /// The preload list is a hand-kept copy of the stylesheet's `src` URLs, and
     /// nothing but this test connects them. A face added to the type contract
@@ -210,10 +206,10 @@ mod tests {
     /// with a fallback flash in between that no reviewer would catch.
     #[test]
     fn every_declared_font_face_is_preloaded() {
-        let sources: Vec<&str> = SHARED_TYPOGRAPHY_CSS
+        let sources: Vec<&str> = TYPOGRAPHY_CSS
             .match_indices("url(")
             .map(|(index, matched)| {
-                let rest = &SHARED_TYPOGRAPHY_CSS[index + matched.len()..];
+                let rest = &TYPOGRAPHY_CSS[index + matched.len()..];
                 &rest[..rest.find(')').expect("unclosed url()")]
             })
             .collect();

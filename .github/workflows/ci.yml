@@ -30,11 +30,14 @@ jobs:
       - name: Install esbuild
         run: npm i -g esbuild@0.28.1
       - name: Format
-        run: cargo fmt --check
+        run: |
+          cargo fmt --check
+          cargo fmt --check --manifest-path shared/Cargo.toml
       - name: Unit tests
         run: |
           cargo test
           cargo test --no-default-features --features ssr
+          cargo test --manifest-path shared/Cargo.toml
           cargo test --manifest-path tools/site/Cargo.toml
           cargo test --manifest-path tools/blog/Cargo.toml
       - name: Check WebAssembly target

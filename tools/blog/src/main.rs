@@ -6,14 +6,9 @@
 //! (an explicit arg overrides it for manual runs). Code blocks are highlighted
 //! at build time with syntect — no client-side JS.
 
-#[path = "../../../shared/chrome.rs"]
-mod chrome;
-#[path = "../../../shared/instruments.rs"]
-mod instruments;
-#[path = "../../../shared/navigation.rs"]
-mod navigation;
-
 use std::{env, fs, path::PathBuf, sync::OnceLock};
+
+use fblln_shared::{HEADER_CSS, TOKENS_CSS, TYPOGRAPHY_CSS, chrome, instruments};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use serde::Deserialize;
@@ -25,9 +20,6 @@ use syntect::util::LinesWithEndings;
 const BASE: &str = "https://fblln.github.io";
 const AUTHOR: &str = "Fabio Ellena";
 const READING_CSS: &str = include_str!("../article.css");
-const SHARED_TOKENS_CSS: &str = include_str!("../../../shared/tokens.css");
-const SHARED_TYPOGRAPHY_CSS: &str = include_str!("../../../shared/typography.css");
-const SHARED_HEADER_CSS: &str = include_str!("../../../shared/header.css");
 
 /// `<script>` that loads the site's wasm bundle to enhance article pages (copy
 /// buttons, reading-progress bar). Empty when no bundle is present — e.g. a manual
@@ -365,9 +357,7 @@ const PANEL_NOTE: &str = "The writing surface is pre-rendered for fast, resilien
 /// The order matters: article layout may specialize base tokens, then the
 /// shared header reasserts its chrome without duplicating either source file.
 fn article_css(code_css: &str) -> String {
-    format!(
-        "{SHARED_TOKENS_CSS}\n{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n"
-    )
+    format!("{TOKENS_CSS}\n{TYPOGRAPHY_CSS}\n{READING_CSS}\n{HEADER_CSS}\n{code_css}\n")
 }
 
 const FOOTER: &str = "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
@@ -655,8 +645,7 @@ fn slug(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        READING_CSS, SHARED_HEADER_CSS, SHARED_TOKENS_CSS, SHARED_TYPOGRAPHY_CSS, article_css,
-        prose_words, render_tags,
+        HEADER_CSS, READING_CSS, TOKENS_CSS, TYPOGRAPHY_CSS, article_css, prose_words, render_tags,
     };
 
     const DESIGN_SYSTEM_PROSE_CSS: &str =
@@ -671,9 +660,9 @@ mod tests {
     #[test]
     fn article_styles_preserve_shared_contract_order() {
         let css = article_css("/* syntax */");
-        let tokens = css.find(SHARED_TOKENS_CSS).expect("tokens css");
-        let typography = css.find(SHARED_TYPOGRAPHY_CSS).expect("typography css");
-        let header = css.find(SHARED_HEADER_CSS).expect("header css");
+        let tokens = css.find(TOKENS_CSS).expect("tokens css");
+        let typography = css.find(TYPOGRAPHY_CSS).expect("typography css");
+        let header = css.find(HEADER_CSS).expect("header css");
         let syntax = css.find("/* syntax */").expect("syntax css");
 
         assert_eq!(tokens, 0);
@@ -697,7 +686,7 @@ mod tests {
             "--pad:",
         ] {
             assert!(
-                SHARED_TOKENS_CSS.contains(token),
+                TOKENS_CSS.contains(token),
                 "{token} missing from shared tokens"
             );
             assert!(
@@ -709,8 +698,8 @@ mod tests {
                 "{token} redefined in article.css"
             );
         }
-        assert!(SHARED_TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
-        assert!(SHARED_TOKENS_CSS.contains("--line-soft: rgba(10, 10, 10, 0.18);"));
+        assert!(TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
+        assert!(TOKENS_CSS.contains("--line-soft: rgba(10, 10, 10, 0.18);"));
         // The design system mirrors the site; drift here is a release blocker.
         assert!(DESIGN_SYSTEM_TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
         assert!(DESIGN_SYSTEM_TOKENS_CSS.contains("--line-soft: rgba(10, 10, 10, 0.18);"));

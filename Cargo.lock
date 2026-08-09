@@ -357,11 +357,16 @@ name = "fblln-portfolio"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
+ "fblln-shared",
  "js-sys",
  "leptos",
  "wasm-bindgen",
  "web-sys",
 ]
+
+[[package]]
+name = "fblln-shared"
+version = "0.0.0"
 
 [[package]]
 name = "form_urlencoded"
