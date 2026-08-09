@@ -35,6 +35,12 @@ web-sys = { version = "0.3", features = [
     "Window",
 ] }
 
+# Test-only: the instrument drift test reads the registry the lab page is built
+# from. Keeping it out of [dependencies] is what guarantees the shipped bundle
+# carries none of it.
+[dev-dependencies]
+fblln-shared = { path = "shared" }
+
 [profile.release]
 opt-level = "z"
 lto = true
