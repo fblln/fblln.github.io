@@ -25,7 +25,10 @@ use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{HtmlInputElement, KeyboardEvent};
 
 use projects::{CATEGORIES, PROJECTS};
-use runtime::PRODUCTION_WASM_SIZE;
+/// Re-exported so the build-time renderer states the same size the hero does.
+/// Two hardcoded numbers for one file is how the panel came to claim 80 KiB
+/// while the hero directly above it claimed 119.
+pub use runtime::PRODUCTION_WASM_SIZE;
 
 #[cfg(target_arch = "wasm32")]
 pub use boot::run;

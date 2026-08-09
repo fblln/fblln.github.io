@@ -8,17 +8,17 @@
 
 #[path = "../../../shared/chrome.rs"]
 mod chrome;
-#[path = "../../../shared/navigation.rs"]
-mod navigation;
 #[path = "../../../shared/instruments.rs"]
 mod instruments;
+#[path = "../../../shared/navigation.rs"]
+mod navigation;
 
 use std::{env, fs, path::PathBuf, sync::OnceLock};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use serde::Deserialize;
 use syntect::highlighting::ThemeSet;
-use syntect::html::{css_for_theme_with_class_style, ClassStyle, ClassedHTMLGenerator};
+use syntect::html::{ClassStyle, ClassedHTMLGenerator, css_for_theme_with_class_style};
 use syntect::parsing::SyntaxSet;
 use syntect::util::LinesWithEndings;
 
@@ -147,11 +147,7 @@ fn main() {
             .collect();
         fs::write(
             dir.join("index.html"),
-            index_page(
-                &format!("Tagged “{tag}”"),
-                Some(tag),
-                subset,
-            ),
+            index_page(&format!("Tagged “{tag}”"), Some(tag), subset),
         )
         .expect("write tag page");
     }
@@ -319,18 +315,21 @@ fn highlight(lang: &str, source: &str, ss: &SyntaxSet) -> String {
         .find_syntax_by_token(lang)
         .or_else(|| ss.find_syntax_by_extension(lang))
         .unwrap_or_else(|| ss.find_syntax_plain_text());
-    let mut gen = ClassedHTMLGenerator::new_with_class_style(syntax, ss, ClassStyle::Spaced);
+    let mut highlighter =
+        ClassedHTMLGenerator::new_with_class_style(syntax, ss, ClassStyle::Spaced);
     for line in LinesWithEndings::from(source) {
         // ponytail: skip a line that fails to tokenize rather than abort the build.
-        let _ = gen.parse_html_for_line_which_includes_newline(line);
+        let _ = highlighter.parse_html_for_line_which_includes_newline(line);
     }
-    let code = gen.finalize();
+    let code = highlighter.finalize();
     if lang.is_empty() {
         format!("<pre class=\"code\"><code>{code}</code></pre>")
     } else {
         // Fenced blocks with a language get a header bar showing the language.
         let l = esc(lang);
-        format!("<figure class=\"codeblock\"><figcaption>{l}</figcaption><pre class=\"code\" data-lang=\"{l}\"><code>{code}</code></pre></figure>")
+        format!(
+            "<figure class=\"codeblock\"><figcaption>{l}</figcaption><pre class=\"code\" data-lang=\"{l}\"><code>{code}</code></pre></figure>"
+        )
     }
 }
 
@@ -366,11 +365,12 @@ const PANEL_NOTE: &str = "The writing surface is pre-rendered for fast, resilien
 /// The order matters: article layout may specialize base tokens, then the
 /// shared header reasserts its chrome without duplicating either source file.
 fn article_css(code_css: &str) -> String {
-    format!("{SHARED_TOKENS_CSS}\n{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n")
+    format!(
+        "{SHARED_TOKENS_CSS}\n{SHARED_TYPOGRAPHY_CSS}\n{READING_CSS}\n{SHARED_HEADER_CSS}\n{code_css}\n"
+    )
 }
 
-const FOOTER: &str =
-    "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
+const FOOTER: &str = "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
 
 fn shell(head: &str, body: &str) -> String {
     let enhance = ENHANCE_SCRIPT.get().map(String::as_str).unwrap_or("");
@@ -378,10 +378,11 @@ fn shell(head: &str, body: &str) -> String {
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
 <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
 <meta name=\"theme-color\" content=\"#f2f0e9\">\
-<link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 fill=%22%230a0a0a%22/><path d=%22M14 12h36v8H23v9h22v8H23v15h-9z%22 fill=%22white%22/></svg>\">{head}\
+<link rel=\"icon\" href=\"{favicon}\">{head}\
 <link rel=\"stylesheet\" href=\"/articles/article.css\">\
 <link rel=\"alternate\" type=\"application/atom+xml\" href=\"/articles/feed.xml\" title=\"Fabio Ellena — Writing\">\
 </head><body>{topbar}{body}{FOOTER}{panel}{enhance}</body></html>",
+        favicon = chrome::FAVICON_HREF,
         topbar = chrome::topbar("/"),
         panel = chrome::system_panel(&DIAGNOSTICS, PANEL_NOTE)
     )
@@ -509,7 +510,11 @@ fn toc_html(heads: &[Head]) -> String {
 
 /// Accept references so tag pages reuse the published articles instead of
 /// cloning their complete rendered bodies just to render a filtered index.
-fn index_page<'a>(title: &str, tag: Option<&str>, articles: impl IntoIterator<Item = &'a Article>) -> String {
+fn index_page<'a>(
+    title: &str,
+    tag: Option<&str>,
+    articles: impl IntoIterator<Item = &'a Article>,
+) -> String {
     let articles: Vec<&Article> = articles.into_iter().collect();
     let is_empty = articles.is_empty();
     let etitle = esc(title);
@@ -552,7 +557,13 @@ fn index_page<'a>(title: &str, tag: Option<&str>, articles: impl IntoIterator<It
 /// the URL segment and visible text are normalized or escaped at this boundary.
 fn render_tags(tags: &[String]) -> String {
     tags.iter()
-        .map(|tag| format!("<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>", slug(tag), esc(tag)))
+        .map(|tag| {
+            format!(
+                "<a class=\"tag\" href=\"/articles/tags/{}/\">{}</a>",
+                slug(tag),
+                esc(tag)
+            )
+        })
         .collect()
 }
 
@@ -644,8 +655,8 @@ fn slug(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        article_css, prose_words, render_tags, READING_CSS, SHARED_HEADER_CSS,
-        SHARED_TOKENS_CSS, SHARED_TYPOGRAPHY_CSS,
+        READING_CSS, SHARED_HEADER_CSS, SHARED_TOKENS_CSS, SHARED_TYPOGRAPHY_CSS, article_css,
+        prose_words, render_tags,
     };
 
     const DESIGN_SYSTEM_PROSE_CSS: &str =
@@ -677,10 +688,26 @@ mod tests {
     /// shared token, and the reading surface asks for `--line-soft` by name.
     #[test]
     fn design_tokens_have_exactly_one_definition_per_surface() {
-        for token in ["--ink:", "--paper:", "--signal:", "--line:", "--muted:", "--pad:"] {
-            assert!(SHARED_TOKENS_CSS.contains(token), "{token} missing from shared tokens");
-            assert!(!PORTFOLIO_CSS.contains(token), "{token} redefined in styles.css");
-            assert!(!READING_CSS.contains(token), "{token} redefined in article.css");
+        for token in [
+            "--ink:",
+            "--paper:",
+            "--signal:",
+            "--line:",
+            "--muted:",
+            "--pad:",
+        ] {
+            assert!(
+                SHARED_TOKENS_CSS.contains(token),
+                "{token} missing from shared tokens"
+            );
+            assert!(
+                !PORTFOLIO_CSS.contains(token),
+                "{token} redefined in styles.css"
+            );
+            assert!(
+                !READING_CSS.contains(token),
+                "{token} redefined in article.css"
+            );
         }
         assert!(SHARED_TOKENS_CSS.contains("--line: rgba(10, 10, 10, 0.3);"));
         assert!(SHARED_TOKENS_CSS.contains("--line-soft: rgba(10, 10, 10, 0.18);"));

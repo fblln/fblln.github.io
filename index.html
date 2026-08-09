@@ -69,17 +69,8 @@
       }
     </script>
   </head>
-  <body>
-    <main id="boot" class="boot" aria-labelledby="boot-title">
-      <span>FBLLN/WASM</span>
-      <h1 id="boot-title">INITIALIZING RUST RUNTIME</h1>
-      <span class="boot-line"></span>
-    </main>
-    <noscript>
-      <main>
-        <h1>Fabio Ellena — Senior Staff Software Engineer</h1>
-        <p>This portfolio is a full WebAssembly application and requires JavaScript to instantiate the Rust runtime.</p>
-      </main>
-    </noscript>
-  </body>
+  <!-- Intentionally empty. tools/site replaces everything between these tags with
+       the boot screen, the no-script notice, the shared chrome, and the statically
+       rendered portfolio; anything authored here is discarded before it ships. -->
+  <body></body>
 </html>

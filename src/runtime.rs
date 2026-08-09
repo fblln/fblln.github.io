@@ -5,7 +5,10 @@ use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
 use web_sys::HtmlElement;
 
-pub(crate) const PRODUCTION_WASM_SIZE: &str = "119 KiB";
+/// The size a reader is told before the browser can measure the real transfer.
+/// Public because `tools/site` prints it into the diagnostics panel at build
+/// time — the same number, from one place, on both sides of the boundary.
+pub const PRODUCTION_WASM_SIZE: &str = "119 KiB";
 
 /// Reads the compressed response size rather than transfer size so cached WASM
 /// still reports the module size the user received on its original fetch.
