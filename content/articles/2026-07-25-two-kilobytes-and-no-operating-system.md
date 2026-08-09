@@ -91,6 +91,13 @@ usage small is ordinary embedded discipline; keeping it *visible* is the part
 that turns out to matter, because the failure mode is not a crash. It is a
 program that worked until you added one more function call.
 
+<figure class="diagram">
+<div data-instrument="sram">
+<p class="inst-static">The bar above is also available as a working model of this chip's 2048 bytes: allocate until <code>malloc</code> refuses, then recurse until the stack writes through the heap and observe that nothing at all happens. It needs the page's WebAssembly bundle, which has not loaded here — the argument is unchanged without it.</p>
+</div>
+<figcaption>The same 2048 bytes, operable. Press <strong>FILL HEAP</strong> and <code>malloc</code> stops politely at avr-libc's 128-byte margin and hands back NULL — a failure you can check for. Then press <strong>CALL</strong> a few times: the stack descends through the top of the heap, the corrupted-byte counter starts climbing, and no fault, no trap and no return code reports it. Returning does not undo the damage. That asymmetry — one direction checked, the other silent — is the reason this series puts safety properties in the type system rather than in the programmer's head.</figcaption>
+</figure>
+
 ## Compiling is not one step — it is four
 
 People say "compiling" for the whole process, but four distinct programs run,
