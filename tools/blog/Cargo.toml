@@ -1,7 +1,7 @@
 [package]
 name = "blog"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 publish = false
 
 # Host-side static-site generator run by trunk's post_build hook. Turns

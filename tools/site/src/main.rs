@@ -21,7 +21,11 @@ const DIAGNOSTICS: [(&str, &str, &str); 9] = [
     ("", "TARGET", "WASM32-UNKNOWN-UNKNOWN"),
     ("fact-engine", "BROWSER ENGINE", "Browser VM"),
     ("fact-boot", "BOOT TO WASM ENTRY", "STATIC"),
-    ("fact-wasm", "WASM RECEIVED", "80 KiB"),
+    (
+        "fact-wasm",
+        "WASM RECEIVED",
+        fblln_portfolio::PRODUCTION_WASM_SIZE,
+    ),
     ("", "RENDERER", "STATIC HTML + DOM"),
     ("", "BUNDLE BUDGET", "≤ 500 KIB GZIP"),
     ("", "APP CODE", "100% RUST"),
@@ -96,25 +100,36 @@ fn inject_static_body(document: &str, app: &str) -> Option<String> {
 /// hand-off. Attribute order is deliberately ignored because Trunk controls
 /// the generated markup and may reorder attributes between releases.
 fn remove_redundant_wasm_preload(document: &str) -> String {
+    rewrite_link_tags(document, |tag| {
+        let is_wasm_fetch_preload = tag.contains("rel=\"preload\"")
+            && tag.contains("as=\"fetch\"")
+            && tag.contains(".wasm");
+        is_wasm_fetch_preload.then(String::new)
+    })
+}
+
+/// Hands every `<link>` tag, in document order, to `rewrite`: `Some` substitutes
+/// the tag, `None` keeps it verbatim. Both post-processing passes are this same
+/// traversal with a different decision, and they used to be two copies of it.
+///
+/// A `<link` with no closing `>` ends the walk with the remainder preserved —
+/// a half-written watch build must still produce a servable document.
+fn rewrite_link_tags(document: &str, mut rewrite: impl FnMut(&str) -> Option<String>) -> String {
     let mut result = String::with_capacity(document.len());
     let mut remainder = document;
 
     while let Some(start) = remainder.find("<link") {
         result.push_str(&remainder[..start]);
-        let tag_end = match remainder[start..].find('>') {
-            Some(end) => start + end + 1,
-            None => {
-                result.push_str(&remainder[start..]);
-                return result;
-            }
+        let Some(end) = remainder[start..].find('>') else {
+            result.push_str(&remainder[start..]);
+            return result;
         };
+        let tag_end = start + end + 1;
         let tag = &remainder[start..tag_end];
-        let is_wasm_fetch_preload = tag.contains("rel=\"preload\"")
-            && tag.contains("as=\"fetch\"")
-            && tag.contains(".wasm");
 
-        if !is_wasm_fetch_preload {
-            result.push_str(tag);
+        match rewrite(tag) {
+            Some(replacement) => result.push_str(&replacement),
+            None => result.push_str(tag),
         }
         remainder = &remainder[tag_end..];
     }
@@ -123,64 +138,52 @@ fn remove_redundant_wasm_preload(document: &str) -> String {
     result
 }
 
-/// Inlines the portfolio's three small, render-critical stylesheets after the
+/// Inlines the portfolio's small, render-critical stylesheets after the
 /// post-build minifier has processed them. GitHub Pages cannot provide HTTP/2
-/// Early Hints or connection-level tuning, so on cold navigations three tiny
+/// Early Hints or connection-level tuning, so on cold navigations these tiny
 /// CSS requests cost more in round trips than they save in document bytes.
 /// Keeping the authored files lets Trunk continue to hash and watch them; only
 /// the final portfolio document changes its delivery form.
+///
+/// Emission follows the document's own link order, which is how `shared/
+/// tokens.css` keeps arriving before the sheets that read its `var()`s.
 fn inline_critical_styles(document: &str, out_root: &Path) -> String {
-    let mut result = String::with_capacity(document.len());
-    let mut remainder = document;
     let mut added_font_preloads = false;
 
-    while let Some(start) = remainder.find("<link") {
-        result.push_str(&remainder[..start]);
-        let tag_end = match remainder[start..].find('>') {
-            Some(end) => start + end + 1,
-            None => {
-                result.push_str(&remainder[start..]);
-                return result;
-            }
-        };
-        let tag = &remainder[start..tag_end];
+    rewrite_link_tags(document, |tag| {
+        let path = critical_style_path(tag)?;
+        // A partially-written watch build must stay renderable. Returning None
+        // keeps Trunk's original link until its hashed asset is available.
+        let css = fs::read_to_string(out_root.join(path)).ok()?;
 
-        if let Some(path) = critical_style_path(tag) {
-            if let Ok(css) = fs::read_to_string(out_root.join(path)) {
-                if !added_font_preloads {
-                    // All six faces are used by the statically rendered first
-                    // viewport. Starting them at document discovery removes
-                    // the CSS→font request chain and avoids fallback reflow.
-                    result.push_str(CRITICAL_FONT_PRELOADS);
-                    added_font_preloads = true;
-                }
-                result.push_str("<style>");
-                result.push_str(&css);
-                result.push_str("</style>");
-            } else {
-                // A partially-written watch build must stay renderable. Keep
-                // Trunk's original link until its hashed asset is available.
-                result.push_str(tag);
-            }
-        } else {
-            result.push_str(tag);
+        let mut replacement = String::with_capacity(css.len() + 16);
+        if !added_font_preloads {
+            // All six faces are used by the statically rendered first viewport.
+            // Starting them at document discovery removes the CSS→font request
+            // chain and avoids fallback reflow.
+            replacement.push_str(CRITICAL_FONT_PRELOADS);
+            added_font_preloads = true;
         }
-        remainder = &remainder[tag_end..];
-    }
-
-    result.push_str(remainder);
-    result
+        replacement.push_str("<style>");
+        replacement.push_str(&css);
+        replacement.push_str("</style>");
+        Some(replacement)
+    })
 }
 
 /// Returns the generated local filename only for the portfolio CSS bundle.
 /// The prefix check deliberately excludes Writing's article stylesheet and any
 /// future third-party CSS, whose loading strategy may have different needs.
+///
+/// `tokens-` is the most critical of the four despite being the smallest: it
+/// declares `--paper` and `--ink`, so leaving it as a separate request meant the
+/// three inlined sheets painted against an unstyled background until it landed.
 fn critical_style_path(tag: &str) -> Option<&str> {
     let href_start = tag.find("href=\"")? + "href=\"".len();
     let href_end = href_start + tag[href_start..].find('"')?;
     let path = tag[href_start..href_end].strip_prefix('/')?;
     let is_stylesheet = tag.contains("rel=\"stylesheet\"");
-    let is_critical = ["styles-", "typography-", "header-"]
+    let is_critical = ["tokens-", "styles-", "typography-", "header-"]
         .iter()
         .any(|prefix| path.starts_with(prefix) && path.ends_with(".css"));
     (is_stylesheet && is_critical).then_some(path)
@@ -195,8 +198,39 @@ mod tests {
     };
 
     use super::{
-        critical_style_path, inject_static_body, inline_critical_styles, remove_redundant_wasm_preload,
+        CRITICAL_FONT_PRELOADS, critical_style_path, inject_static_body, inline_critical_styles,
+        remove_redundant_wasm_preload,
     };
+
+    const SHARED_TYPOGRAPHY_CSS: &str = include_str!("../../../shared/typography.css");
+
+    /// The preload list is a hand-kept copy of the stylesheet's `src` URLs, and
+    /// nothing but this test connects them. A face added to the type contract
+    /// and missed here still loads — one round trip later, after the CSS parses,
+    /// with a fallback flash in between that no reviewer would catch.
+    #[test]
+    fn every_declared_font_face_is_preloaded() {
+        let sources: Vec<&str> = SHARED_TYPOGRAPHY_CSS
+            .match_indices("url(")
+            .map(|(index, matched)| {
+                let rest = &SHARED_TYPOGRAPHY_CSS[index + matched.len()..];
+                &rest[..rest.find(')').expect("unclosed url()")]
+            })
+            .collect();
+
+        assert!(!sources.is_empty(), "no font sources found to check");
+        for source in &sources {
+            assert!(
+                CRITICAL_FONT_PRELOADS.contains(source),
+                "{source} is declared but never preloaded"
+            );
+        }
+        // The other direction: a preload left behind for a face that is gone.
+        assert_eq!(
+            CRITICAL_FONT_PRELOADS.matches("rel=\"preload\"").count(),
+            sources.len()
+        );
+    }
 
     /// Watch mode may reuse generated output, so injection must remove old
     /// placeholders and create exactly one stable hydration root every time.
@@ -244,6 +278,16 @@ mod tests {
             critical_style_path("<link rel=\"stylesheet\" href=\"/styles-a1.css\">"),
             Some("styles-a1.css")
         );
+        // The token sheet defines the variables the other three consume, so it
+        // has to be inlined with them rather than left as a blocking request.
+        assert_eq!(
+            critical_style_path("<link rel=\"stylesheet\" href=\"/tokens-a1.css\">"),
+            Some("tokens-a1.css")
+        );
+        assert_eq!(
+            critical_style_path("<link rel=\"stylesheet\" href=\"/typography-a1.css\">"),
+            Some("typography-a1.css")
+        );
         assert_eq!(
             critical_style_path("<link rel=\"stylesheet\" href=\"/articles/article.css\">"),
             None
@@ -263,13 +307,23 @@ mod tests {
             .as_nanos();
         let directory = std::env::temp_dir().join(format!("fblln-site-{nonce}"));
         fs::create_dir(&directory).expect("temp dir");
+        fs::write(directory.join("tokens-a1.css"), ":root{--ink:#000}").expect("css");
         fs::write(directory.join("styles-a1.css"), "body{color:red}").expect("css");
 
-        let source = "<head><link rel=\"stylesheet\" href=\"/styles-a1.css\"><link rel=\"stylesheet\" href=\"/articles/article.css\"><link rel=\"stylesheet\" href=\"/header-missing.css\"></head>";
+        let source = "<head><link rel=\"stylesheet\" href=\"/tokens-a1.css\"><link rel=\"stylesheet\" href=\"/styles-a1.css\"><link rel=\"stylesheet\" href=\"/articles/article.css\"><link rel=\"stylesheet\" href=\"/header-missing.css\"></head>";
         let result = inline_critical_styles(source, &directory);
 
         assert!(result.contains("<style>body{color:red}</style>"));
+        assert!(result.contains("<style>:root{--ink:#000}</style>"));
+        // A `var()` resolves against the declaration that precedes it, so the
+        // token sheet must survive inlining ahead of every sheet reading it.
+        assert!(
+            result.find(":root{--ink:#000}") < result.find("body{color:red}"),
+            "tokens must be inlined before the sheets that consume them"
+        );
+        // The preloads are emitted once, at the first inlined sheet.
         assert_eq!(result.matches("rel=\"preload\"").count(), 6);
+        assert!(result.find("archivo-400.woff2") < result.find("<style>"));
         assert!(result.contains("archivo-900.woff2"));
         assert!(result.contains("ibm-plex-mono-700.woff2?v=2"));
         assert!(result.contains("href=\"/articles/article.css\""));
@@ -280,6 +334,9 @@ mod tests {
     #[test]
     fn malformed_link_suffix_is_preserved() {
         let source = "<head><link rel=\"stylesheet\" href=\"/styles-a1.css";
-        assert_eq!(inline_critical_styles(source, Path::new("/missing")), source);
+        assert_eq!(
+            inline_critical_styles(source, Path::new("/missing")),
+            source
+        );
     }
 }

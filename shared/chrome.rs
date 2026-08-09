@@ -12,6 +12,14 @@
 
 use crate::navigation::PRIMARY_NAV;
 
+/// The wordmark, as an inline SVG data URI. Held here rather than in either
+/// document because the portfolio shell and every generated page carry the same
+/// mark, and a favicon that disagrees between routes reads as two sites.
+///
+/// `index.html` is copied verbatim by Trunk and never passes through Rust, so it
+/// keeps its own `<link>`; the test below is what stops that copy from drifting.
+pub const FAVICON_HREF: &str = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 fill=%22%230a0a0a%22/><path d=%22M14 12h36v8H23v9h22v8H23v15h-9z%22 fill=%22white%22/></svg>";
+
 /// `base` prefixes home-relative fragments. The portfolio document passes `""`
 /// because `#work` already targets itself; generated pages under another route
 /// pass `"/"` so the same link doesn't scroll whichever document it landed in.
@@ -69,7 +77,18 @@ pub fn system_panel(rows: &[(&str, &str, &str)], note: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{system_panel, topbar};
+    use super::{FAVICON_HREF, system_panel, topbar};
+
+    /// The portfolio shell is hand-authored HTML that Rust never rewrites, so
+    /// its favicon is a copy of this constant. Nothing but this test notices
+    /// when the mark changes here and not there.
+    #[test]
+    fn the_portfolio_shell_carries_the_shared_favicon() {
+        assert!(
+            include_str!("../index.html").contains(FAVICON_HREF),
+            "index.html's favicon has drifted from chrome::FAVICON_HREF"
+        );
+    }
 
     /// Static pages live below `/articles/`, so leaving fragment-only links in
     /// either navigation variant would scroll the wrong document — while the
@@ -111,7 +130,10 @@ mod tests {
     #[test]
     fn panel_rows_expose_ids_only_where_requested() {
         let html = system_panel(
-            &[("fact-engine", "BROWSER ENGINE", "Browser VM"), ("", "APP CODE", "100% RUST")],
+            &[
+                ("fact-engine", "BROWSER ENGINE", "Browser VM"),
+                ("", "APP CODE", "100% RUST"),
+            ],
             "why",
         );
 
