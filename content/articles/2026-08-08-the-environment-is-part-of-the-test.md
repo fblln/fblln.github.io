@@ -7,7 +7,8 @@ tags = ["Testing", "Architecture", "Distributed Systems", "Kotlin"]
 
 The numbers came first, as they usually do. Roughly a thousand system tests.
 A dozen containers per topology — several Spring Boot services, Kafka, MongoDB,
-a pile of HTTP mocks, a behavioural simulator. Eight cores and sixteen gigabytes
+a pile of HTTP mocks standing in for carrier APIs, a warehouse simulator that
+models pickers and conveyors. Eight cores and sixteen gigabytes
 to run all of it, on a laptop and on a CI runner that is not meaningfully
 larger.
 
@@ -103,8 +104,8 @@ Take a topology that reaches readiness in forty seconds and tears down in ten.
 If the environment belongs to the test, a thousand tests cost a thousand
 lifecycles: fifty thousand seconds, near enough fourteen hours, spent before any
 assertion has executed. If the environment belongs to the runner, the same
-thousand tests fall into a handful of distinct topologies — telemetry, remote
-operations, notifications, the full system, a few fault environments — and cost
+thousand tests fall into a handful of distinct topologies — fulfilment,
+inventory, returns, the full system, a few fault environments — and cost
 five lifecycles. Four minutes.
 
 Those figures are arithmetic from a stated model, not a measurement of anything
@@ -135,8 +136,8 @@ starts each bucket once.
 Which means the declaration has to be readable without executing anything:
 
 ```kotlin
-@Environment("telemetry")
-class LastTelemetryTest
+@Environment("fulfilment")
+class PickToShipTest
 ```
 
 Not a `@BeforeAll` that starts containers, because you cannot bucket a side
@@ -197,11 +198,11 @@ So tests stay as Kotlin:
 
 ```kotlin
 @Test
-fun `last telemetry becomes available`(ctx: HarnessContext) {
-    ctx.simulator.publishTelemetry(vin = ctx.ids.vin())
+fun `a picked order becomes dispatchable`(ctx: HarnessContext) {
+    ctx.simulator.completePick(order = ctx.ids.order())
 
     eventually {
-        ctx.api.lastTelemetry(ctx.ids.vin()).speed isEqualTo 42
+        ctx.api.shipment(ctx.ids.order()).state isEqualTo READY_TO_SHIP
     }
 }
 ```
@@ -228,9 +229,9 @@ id:
 
 ```text
 run       8f30
-test      unlock-0341
-VIN       ST-8f30-0341-001
-account   ST-8f30-0341-account
+test      reserve-0341
+order     ORD-8f30-0341-001
+sku       SKU-8f30-0341
 group     systest-8f30-0341
 ```
 
@@ -239,7 +240,7 @@ Shared state stops being contention and becomes background. And because the same
 identifier travels through the system as a header —
 
 ```http
-X-Test-Id: 8f30-unlock-0341
+X-Test-Id: 8f30-reserve-0341
 ```
 
 — a fifty-megabyte cluster log becomes greppable by the thing you actually care
@@ -250,14 +251,15 @@ document is. Before the test acts, the harness records the current end offsets;
 afterwards it reads only forward from that mark.
 
 ```kotlin
-val mark = ctx.kafka.checkpoint("telemetry")
-ctx.api.unlock(vin)
-val event = ctx.kafka.awaitAfter<TelemetryEvent>(mark, "telemetry") { it.vin == vin }
+val mark = ctx.kafka.checkpoint("shipments")
+ctx.api.reserve(order)
+val event = ctx.kafka.awaitAfter<ShipmentReady>(mark, "shipments") { it.order == order }
 ```
 
 Nothing is deleted. Nothing is truncated. Two tests can be publishing to the same
 topic at the same moment and neither can see the other's events, because each is
-reading a different window of the same log and filtering by a VIN only it knows.
+reading a different window of the same log and filtering by an order id only it
+knows.
 
 <figure class="diagram">
 <svg viewBox="0 0 620 148" role="img" aria-label="A single horizontal rail representing one Kafka topic partition. Faint marks sit along the left half, representing other tests' events which remain in place. A solid vertical line labelled checkpoint stands in the middle. To the right of it further marks appear, two of them highlighted as this test's events. A note reads: nothing is truncated, nothing is deleted.">
@@ -289,6 +291,39 @@ reading a different window of the same log and filtering by a VIN only it knows.
 <figcaption>The checkpoint is what lets a shared environment behave like a private one. It also removes the last structural reason tests must run one at a time — after which the limit on concurrency is CPU, which is an honest limit you can go and buy more of.</figcaption>
 </figure>
 
+### The tests that cannot share, and the refusal that saves you
+
+Unique names solve the tests that only *read* the environment, which is most of
+them. They do nothing for the minority that change it: restart a broker, flip a
+feature flag, saturate a queue, inject a fault. Those tests are not badly
+written. They are the ones testing the things that matter most, and they need
+the environment to themselves.
+
+The instinct is to serialise the whole suite so that the awkward ten percent
+can't hurt anyone. JUnit already has the smaller answer:
+
+```kotlin
+@ResourceLock(ENVIRONMENT, mode = READ)        // shares, runs concurrently
+@ResourceLock(ENVIRONMENT, mode = READ_WRITE)  // runs alone
+```
+
+Read-mode tests run together; a write-mode test never overlaps one. Two meta-
+annotations — call them `@SharedEnvTest` and `@ExclusiveEnvTest` — and the
+distinction is declared at each test rather than assumed for all of them. Both
+Temporal and Strimzi arrived at this same split independently, as a pool of
+shared and dedicated clusters in one and an `@IsolatedTest` annotation in the
+other, which is usually a sign the distinction is in the problem rather than in
+anyone's taste.
+
+The rule that makes it hold is a refusal. When an exclusive test is asked to run
+against an environment it cannot have exclusively — a reused one, a shared CI
+lane — the runner must **fail with the command that would fix it**, not run
+anyway. Temporal's cross-SDK runner does exactly this, rejecting configuration-
+mutating variants against an external server rather than executing them wrong.
+A harness that degrades quietly under a condition it can detect is worse than
+one that has no opinion at all, because it converts a clear error into twenty
+confusing ones somewhere else.
+
 ## `eventually`, and what a timeout owes you
 
 `Thread.sleep(5000)` is a bet that the system is slower than nothing and faster
@@ -300,11 +335,11 @@ Awaitility, or a thin wrapper over it, with the poll interval and timeout
 defined centrally rather than per assertion:
 
 ```kotlin
-eventually { ctx.mongo.vehicles.get(vin).status isEqualTo ACTIVE }
+eventually { ctx.mongo.orders.get(order).state isEqualTo RESERVED }
 ```
 
 The wrapper earns its existence on failure, not on success. An eventual
-assertion that times out with `expected ACTIVE but was PENDING` has thrown away
+assertion that times out with `expected RESERVED but was PENDING` has thrown away
 the one moment when it knew everything: it had a Mongo connection, a Kafka
 consumer positioned at the right offset, and the container logs for the window
 it was waiting through. All of that belongs in the failure. A polling helper
@@ -331,12 +366,12 @@ write it beside the result. Then the artifact directory answers the question
 directly instead of inviting you to reproduce it:
 
 ```text
-tests/remotes/UnlockVehicleTest/successfulUnlock/
+tests/inventory/ReserveStockTest/reservesTheLastUnit/
     result.json
     failure.txt
-    logs/gateway.log  logs/remote-service.log
+    logs/gateway.log  logs/inventory-service.log
     kafka/consumed.jsonl
-    mongo/vehicle.json
+    mongo/order.json
 ```
 
 The Docker event stream is the one people leave out, and it is the one that
@@ -344,7 +379,7 @@ converts confusion into a sentence. An assertion can only ever tell you what did
 not arrive. The event log tells you why.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 158" role="img" aria-label="A four-second timeline with two rails. Along the top, four moments: test starts, the telemetry service dies, the container restarts, the test times out. The upper rail, labelled collected always, has a mark at all four moments. The lower rail, labelled collected after failure, is dashed and empty until the final moment. A note contrasts the assertion message with the event log.">
+<svg viewBox="0 0 620 158" role="img" aria-label="A four-second timeline with two rails. Along the top, four moments: test starts, the inventory service dies, the container restarts, the test times out. The upper rail, labelled collected always, has a mark at all four moments. The lower rail, labelled collected after failure, is dashed and empty until the final moment. A note contrasts the assertion message with the event log.">
   <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">FOUR SECONDS THAT EXPLAIN A FAILURE</text>
   <g font-family="var(--font-mono)" font-size="8" text-anchor="middle" fill="var(--muted)">
     <text x="160" y="32">13:42:31</text>
@@ -371,11 +406,53 @@ not arrive. The event log tells you why.
   <line x1="560" y1="106" x2="620" y2="106" stroke="var(--line)"/>
   <rect x="576" y="100" width="4" height="12" fill="var(--ink)" opacity="0.35"/>
   <text x="335" y="124" font-family="var(--font-mono)" font-size="8" fill="var(--muted)" text-anchor="middle">THE THREE SECONDS THAT EXPLAIN IT ARE ALREADY GONE</text>
-  <text x="0" y="150" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the assertion says: expected telemetry, none arrived</text>
+  <text x="0" y="150" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the assertion says: expected a shipment event, none arrived</text>
   <text x="620" y="150" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="end">the event log says: it died at :32</text>
 </svg>
 <figcaption>Collecting on failure is collecting too late — by the time the assertion gives up, the interesting seconds have scrolled past and the only surviving copy was in a stream nobody was reading. The cost of always-on collection is a subprocess and some disk. The cost of the alternative is measured in reproductions.</figcaption>
 </figure>
+
+### A collected log is evidence; an asserted log is a test
+
+Once the stream exists, there is a second use for it that costs almost nothing.
+Strimzi runs a matcher over the operator's log after **every** system test,
+failing the test on any error or exception that isn't on a short allowlist of
+known-benign messages.
+
+That reframes the log from evidence into an assertion every test carries without
+writing one. A test that satisfies its own expectations while the gateway threw
+fifty null pointers in the background is not a passing test; it is a test that
+wasn't looking. The allowlist is the interesting part of the design — it is a
+small, reviewable file, and every entry in it is a decision someone had to
+defend in a pull request. Compare that with the usual arrangement, where the
+same fifty exceptions are also tolerated, but silently, by nobody, forever.
+
+## The assertions nobody wrote
+
+Tests assert what their author thought to assert. That is a much smaller set
+than the behaviour a distributed system actually has, and the gap is where
+compatibility regressions live: a field that changed type, an event emitted
+twice, a new message inserted between two others, a retry that used to be
+invisible.
+
+Temporal's cross-SDK suite handles this by committing **the execution history
+itself** as a fixture, then checking three things on every run: that the current
+history replays, that every stored history from earlier versions still replays,
+and that the current run's scrubbed events match what was recorded.
+
+The fulfilment equivalent is a golden file of the events a scenario emits, with
+ids and timestamps scrubbed:
+
+```text
+tests/inventory/ReserveStockST/reservesTheLastUnit/golden/events.jsonl
+```
+
+`--update-golden` rewrites it; code review catches the diff. It is approval
+testing pointed at a message bus, and it is the only mechanism in the whole
+harness that tests compatibility *between versions of your own services* rather
+than the behaviour of one version. Everything else in this article asks "does it
+work?". This one asks "did it change?" — and for a system where other teams
+consume your events, that is the question with the longer tail.
 
 ## Sharding is the only parallelism you can afford
 
@@ -404,7 +481,7 @@ Which makes the entire CI integration one line:
 
 ```yaml
 - name: System tests
-  run: ./systest run telemetry --shard ${{ matrix.shard }}
+  run: ./systest run fulfilment --shard ${{ matrix.shard }}
 ```
 
 Anything more in that file is orchestration a developer cannot run.
@@ -419,7 +496,7 @@ fault injection file — compose in the literal sense, and the environment the
 runner starts is the environment you get from typing the same files yourself:
 
 ```bash
-docker compose -f compose/base.yml -f compose/stacks/telemetry.yml up
+docker compose -f compose/base.yml -f compose/stacks/fulfilment.yml up
 ```
 
 A harness that is the only way to start the system is a harness you will be
@@ -432,6 +509,13 @@ reasons that have nothing to do with the code. Resolve the tags up front and
 write the manifest into the results directory next to the logs, so a failure
 always carries the answer to *what exactly was running?*
 
+Strimzi does one better with that manifest, and it is worth copying exactly:
+every resolved variable is written into the results directory in **the same
+format the harness accepts as input**. The artifact you download from a failed
+CI job is not a record of the run, it is the run — hand it back with
+`--config` and you get the same environment, the same image versions, the same
+flags. A record you can only read is a record you will misread.
+
 ## The tool has to be pleasant on a Tuesday
 
 Everything above is about correctness and cost. The thing that actually decides
@@ -443,9 +527,9 @@ failure mode where a good harness is abandoned quietly. So the lifecycle
 commands are separate from the run command:
 
 ```bash
-./systest up telemetry
-./systest run --reuse-environment telemetry --test UnlockVehicleTest
-./systest down telemetry
+./systest up fulfilment
+./systest run --reuse-environment fulfilment --test ReserveStockTest
+./systest down fulfilment
 ```
 
 and a failing CI-style run can retain what it built:
@@ -461,13 +545,63 @@ failure happens is not the moment its evidence is destroyed. Both are small
 features, and between them they are most of the difference between a harness
 people run and a harness people route around.
 
+### The green triangle in the IDE
+
+There is a harder version of the same requirement, and it is the one that
+decides whether anybody adopts this. When a developer clicks the run gutter next
+to a single test, the IDE does not invoke the CLI. It builds its own JUnit
+configuration, forks a JVM, and calls the Platform Launcher directly. Nothing in
+`main()` runs. If the environment lifecycle lives only in the CLI, the green
+triangle is broken, and a test harness whose tests can't be run from the IDE is
+a test harness people will work around rather than with.
+
+The fix is to stop *starting* environments and start *acquiring* them:
+
+```kotlin
+val project = "systest-$fingerprint"          // deterministic, never random
+composePs(project)?.let { return attach(it) } // already up: connect and go
+compose(project, "up", "-d", "--wait")        // not up: start it, and remember that we did
+```
+
+registered from a `LauncherSessionListener`, which fires once per JVM session
+under the IDE, under Gradle and under the CLI alike. `./systest up` stops being a
+prerequisite and becomes a way to pre-pay the forty seconds in a terminal. The
+teardown rule is one boolean: **tear down only what you started.**
+
+Two details make it safe rather than merely convenient. Ports must be read back
+from the running project rather than pinned, or two environments can never
+coexist and the whole scheme collapses. And the fingerprint must include the
+resolved image digests, not just the compose file paths — then rebuilding a
+service changes the fingerprint, changes the project name, and leaves nothing to
+attach to. Testing against a stale container stops being a thing you remember to
+check and becomes a thing that cannot happen.
+
+Arquillian drew this line fifteen years ago as *managed* versus *remote*
+containers, and Testcontainers redrew it as reusable containers matched by a hash
+of their configuration. It is a well-worn distinction and there is no credit for
+rediscovering it slowly.
+
+One last thing, small enough to be embarrassing and large enough to matter: the
+moment someone sets a breakpoint, every readiness wait and every `eventually`
+starts failing for reasons unrelated to the bug. Temporal ships an environment
+variable for this. The JVM will tell you for free:
+
+```kotlin
+val debugging = ManagementFactory.getRuntimeMXBean()
+    .inputArguments.any { it.startsWith("-agentlib:jdwp") }
+```
+
+Scale every timeout by twenty when that is true. A suite you cannot pause is a
+suite you can only debug from the outside.
+
 ## What I would not build yet
 
 The design is only as good as the things it declines to include. Not in the
 first version, and possibly not ever: a Gherkin dialect, a bespoke assertion
 syntax, custom test discovery, a Kubernetes orchestrator, a dynamic dependency
 graph between services, container-per-test isolation, duration-weighted shard
-balancing, a scheduler.
+balancing, a scheduler, a pool manager for environments you do not have the
+cores to run two of.
 
 Every one of those is a real technique that solves a real problem somewhere. None
 of them is a problem this system has, and the cost of the wrong one is not the
@@ -499,6 +633,12 @@ isolation becomes naming because resets are unavailable, evidence becomes
 automatic because something is already watching, and CI becomes one line because
 there is nothing left in it to configure.
 
+It is also, reassuringly, not an original decision. Kafka's suite has worked
+this way for a decade, Strimzi's does it on Kubernetes with a JUnit 5 suite that
+looks a lot like the one described here, and Temporal does it by making the
+server embeddable so the test process can own the topology outright. Three
+projects, three substrates, the same answer about who holds the keys.
+
 The environment was always part of the test. The only question is whether
 anything in your system is responsible for it.
 
@@ -514,24 +654,48 @@ anything in your system is responsible for it.
 2. Apache Kafka — `tests/`, a decade of system tests written against that model.
    https://github.com/apache/kafka/tree/trunk/tests
 
+3. Strimzi — `TESTING.md` and the `systemtest` module: the same ownership model
+   on Kubernetes, in JUnit 5. Source of the isolated/parallel annotations, the
+   operator log matcher, and the re-runnable run configuration.
+   https://github.com/strimzi/strimzi-kafka-operator/blob/main/development-docs/TESTING.md
+
+4. Temporal — `docs/development/testing.md`, and the cross-SDK `features`
+   runner. Shared and dedicated cluster pools, capability declarations, and a
+   runner that refuses rather than degrades.
+   https://github.com/temporalio/temporal/blob/main/docs/development/testing.md
+
+5. Antithesis — where this idea ends up: your Compose topology, run
+   deterministically under a fault-injecting hypervisor.
+   https://antithesis.com/docs/getting_started/setup_guide/docker_compose/
+
 **The tools**
 
-3. JUnit Platform Launcher — programmatic discovery, filtering and execution.
+6. JUnit Platform Launcher — programmatic discovery, filtering and execution;
+   `LauncherSessionListener` for once-per-JVM environment lifecycle.
    https://junit.org/junit5/docs/current/user-guide/#launcher-api
 
-4. Testcontainers — the right tool one level down, at component scope.
-   https://testcontainers.com/
+7. JUnit 5 — parallel execution and `@ResourceLock`, which is the whole of the
+   shared-versus-exclusive mechanism.
+   https://docs.junit.org/current/user-guide/#writing-tests-parallel-execution
 
-5. Awaitility — polling assertions with explicit timeouts.
+8. Testcontainers — the right tool one level down, at component scope; and
+   reusable containers, which is attach-or-start by another name.
+   https://java.testcontainers.org/features/reuse/
+
+9. Awaitility — polling assertions with explicit timeouts.
    https://github.com/awaitility/awaitility
 
-6. Docker Compose — merging multiple Compose files.
-   https://docs.docker.com/compose/multiple-compose-files/
+10. Docker Compose — merging multiple Compose files.
+    https://docs.docker.com/compose/multiple-compose-files/
+
+11. skodjob/test-metadata-generator — the annotations behind Strimzi's
+    generated system-test documentation.
+    https://github.com/skodjob/test-metadata-generator
 
 **The ideas**
 
-7. Fabio Ellena, "Architecture Must Follow Pressure," 2026.
-   https://fblln.github.io/articles/architecture-must-follow-pressure/
+12. Fabio Ellena, "Architecture Must Follow Pressure," 2026.
+    https://fblln.github.io/articles/architecture-must-follow-pressure/
 
-8. Fabio Ellena, "The Runtime Is What's Left Over," 2026.
-   https://fblln.github.io/articles/the-runtime-is-what-is-left-over/
+13. Fabio Ellena, "The Runtime Is What's Left Over," 2026.
+    https://fblln.github.io/articles/the-runtime-is-what-is-left-over/
