@@ -282,6 +282,26 @@ checking they ascend. None of this needs a CSS toolchain, a linter, or a plugin.
 It needs the stylesheet to be a string in a language that already has a test
 runner.
 
+The version of this I'd defend hardest reaches across a language boundary. The
+portfolio preloads its six font files from a hand-written list of `<link>` tags
+in the site generator — a copy, by hand, of the `src` URLs in
+`shared/typography.css`. Add a seventh weight to the stylesheet and forget the
+list and nothing breaks: the face still loads, one round trip later, after the
+CSS parses, with a flash of fallback text in between. That is exactly the class
+of bug that survives review forever. So the test derives one from the other:
+
+```rust
+for source in &sources {
+    assert!(
+        CRITICAL_FONT_PRELOADS.contains(source),
+        "{source} is declared but never preloaded"
+    );
+}
+```
+
+`sources` is parsed out of the stylesheet at test time. The stylesheet is the
+input to the assertion rather than a second thing to remember.
+
 ### And what Rust makes worse
 
 Honesty first: WebAssembly cannot touch the DOM. Every DOM call goes through a
@@ -620,7 +640,7 @@ So the build writes down deterministic lies:
 
 ```rust
 ("fact-engine", "BROWSER ENGINE", "Browser VM"),
-("fact-boot",   "BOOT TO WASM ENTRY", "STATIC"),
+("fact-boot", "BOOT TO WASM ENTRY", "STATIC"),
 ```
 
 and the browser overwrites them once it can actually measure:
