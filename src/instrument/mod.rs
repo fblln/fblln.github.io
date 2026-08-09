@@ -30,11 +30,11 @@ pub(crate) mod partitioning;
 pub(crate) mod sram;
 
 // The bundle does not read the registry — it dispatches on the attribute it
-// finds in the DOM. Only the drift test below needs it; the lab generator
-// includes the same file independently.
+// finds in the DOM. Only the drift test below needs it, which is why
+// `fblln-shared` is a dev-dependency: the list costs bytes in the generator
+// that renders the lab page, and none at all in what a reader downloads.
 #[cfg(test)]
-#[path = "../../shared/instruments.rs"]
-pub(crate) mod registry;
+pub(crate) use fblln_shared::instruments as registry;
 
 /// Severity of a log line, so a view can mark outcomes without re-deriving what
 /// happened. `Held` is the interesting one: a mechanism deliberately refusing to

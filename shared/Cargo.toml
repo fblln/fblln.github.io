@@ -1,0 +1,17 @@
+[package]
+name = "fblln-shared"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# What the interactive portfolio and the static generators have to agree about:
+# navigation data, chrome markup, the instrument registry, and the three design
+# stylesheets. No dependencies, on purpose — anything that needs a crate to
+# express does not belong to both surfaces.
+[workspace]
+
+# Flat layout. The stylesheets are as much a part of this contract as the Rust
+# is, `index.html` loads them from `shared/` by path, and splitting the six files
+# across `src/` and the package root would only obscure that they are one thing.
+[lib]
+path = "lib.rs"

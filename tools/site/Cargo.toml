@@ -8,3 +8,4 @@ publish = false
 
 [dependencies]
 fblln-portfolio = { path = "../..", default-features = false, features = ["ssr"] }
+fblln-shared = { path = "../../shared" }

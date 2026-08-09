@@ -57,6 +57,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 name = "blog"
 version = "0.0.0"
 dependencies = [
+ "fblln-shared",
  "pulldown-cmark",
  "serde",
  "syntect",
@@ -100,6 +101,10 @@ dependencies = [
  "regex-automata",
  "regex-syntax",
 ]
+
+[[package]]
+name = "fblln-shared"
+version = "0.0.0"
 
 [[package]]
 name = "flate2"
