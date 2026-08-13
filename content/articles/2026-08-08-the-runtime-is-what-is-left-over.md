@@ -187,7 +187,7 @@ about. It is something one of them owns.
 
 Every architecture note eventually has to justify its language, and "it's fast"
 is not the reason here — a personal site does not need a fast language. Four
-specific properties of Rust are doing load-bearing work.
+specific properties of Rust are what the design actually rests on.
 
 ### One language on both sides of the build
 

@@ -341,10 +341,11 @@ removes is the machine-readable part: you trade a schema a validator can
 enforce for a relation name a human has to look up. For a client that could not
 read a schema anyway, that trade was nearly free.
 
-That "basic" is load-bearing, and I will come back to it in Part III, because
-richer hypermedia formats do not make this trade and the comparison above is
-unfair to them. For now the point stands against the shape most people actually
-mean when they say hypermedia: a relation name and a target.
+That "basic" is doing a lot of work in that sentence, and I come back to it in
+Part IV, because richer hypermedia formats do not make this trade and the
+comparison above is unfair to them. For now the point stands against the shape
+most people actually mean when they say hypermedia: a relation name and a
+target.
 
 ## The one class of links everybody follows
 

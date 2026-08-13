@@ -1,7 +1,7 @@
 +++
 title = "The Affordance Strikes Back"
 date = "2026-08-16"
-description = "A tool description is a paragraph of English carrying purpose, preconditions, side effects, exclusions and interactions with every other tool — and a study of 856 tools across 103 servers found 97% of them defective in at least one of those jobs. That is not a protocol failure; it is a load-bearing prose field doing work a schema could do. HAL-FORMS, Hydra and the W3C Web of Things all encode part of that work as data, and a Hydra-to-MCP gateway has now shown the two models can be composed. Stable verbs, dynamic affordances. Fourth of four."
+description = "A tool description is a paragraph of English carrying purpose, preconditions, side effects, exclusions and interactions with every other tool — and a study of 856 tools across 103 servers found 97% of them defective in at least one of those jobs. That is not a protocol failure; it is one prose field carrying work a schema could do. HAL-FORMS, Hydra and the W3C Web of Things all encode part of that work as data, and a Hydra-to-MCP gateway has now shown the two models can be composed. Stable verbs, dynamic affordances. Fourth of four."
 tags = ["API Design", "Protocols", "Architecture", "Complexity"]
 +++
 
