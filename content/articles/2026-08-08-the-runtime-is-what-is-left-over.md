@@ -19,10 +19,10 @@ Press `S` on either one and the same diagnostics panel slides open. Not
 "similar" — the same, in the strict sense that there is exactly one description
 of each of those things anywhere in the repository.
 
-That is the part of this site I think is worth writing down. Not "it's Rust,"
-which is a material rather than a shape. The shape is what two independently
-built surfaces are allowed to share, where that shared thing physically lives,
-and what stops it from quietly becoming two things again.
+That is the part of this site I want to write down. Not "it's Rust," which is a
+material rather than a shape. The shape is what two independently built
+surfaces are allowed to share, where that shared thing physically lives, and
+what stops it from quietly becoming two things again.
 
 <figure class="diagram">
 <svg viewBox="0 0 620 208" role="img" aria-label="A system map with three columns. On the left, an outlined block for the portfolio: one page, hydrated WebAssembly, built from src/lib.rs. On the right, an outlined block for Writing: many pages, static HTML, built from content/articles. In the middle, a solid block labelled shared, listing six files: tokens.css, typography.css, header.css, navigation.rs, chrome.rs and instruments.rs. Arrows point outward from the middle block to both surfaces. A note reads: two different programs render these two surfaces, and neither of them owns what they agree on.">
@@ -96,11 +96,11 @@ mod navigation;
 ```
 
 `#[path]` tells the Rust compiler where a module's source lives when it isn't
-where the module tree says it should be. And it is worth being precise about
-what that does, because the obvious objection to it is wrong: **nothing is
-copied.** There is one `chrome.rs` on disk. Three programs compile it, none of
-them holds a duplicate, and no edit can land in one copy and miss another. Drift
-was already impossible.
+where the module tree says it should be. And the obvious objection to it is
+wrong, so it needs saying precisely: **nothing is copied.** There is one
+`chrome.rs` on disk. Three programs compile it, none of them holds a duplicate,
+and no edit can land in one copy and miss another. Drift was already
+impossible.
 
 So the argument for leaving it alone was a good one, and I made it for a long
 time. A shared crate makes sharing *legible*. It does not make it any more
@@ -587,8 +587,8 @@ three steps in a deliberate order.
 <figcaption>The ordering is a real dependency, not tidiness. The site generator inlines the CSS that minification just produced, so it has to run after it — and Trunk offers no ordering guarantee between hooks in the same stage, which is why they live in a single script instead of three hook entries.</figcaption>
 </figure>
 
-Two details in that pipeline are worth pulling out, because both are cases of a
-build step protecting a promise the code makes.
+Two details in that pipeline stand out, because both are cases of a build step
+protecting a promise the code makes.
 
 The site generator *replaces* the body rather than appending to it, so repeated
 watch builds converge instead of accumulating. And it deletes one tag from the

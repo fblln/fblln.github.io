@@ -63,7 +63,7 @@ architecture problem holding a stopwatch.
 
 ## Parallelism has a price, and the price is isolation
 
-This is the part worth writing about.
+This is the part I want to write about.
 
 With Isolated Projects enabled, build logic belonging to one project can no
 longer freely access the mutable state of another. Gradle can therefore
@@ -116,7 +116,7 @@ to mutable build-scoped state are treated as incompatible, and the legacy
 of `org.gradle.isolated-projects` — they still work as aliases, for now.
 
 The `.unsafe` prefix is disappearing because the constraint is becoming the
-architecture. It is worth being precise about the maturity, though: the
+architecture. The maturity needs stating precisely, though: the
 feature is not enabled by default and is not yet recommended for production.
 Most builds and most plugins will need changes to satisfy it. That is not a
 footnote — it is the whole point. The tool is asking the ecosystem to give

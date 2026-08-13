@@ -162,11 +162,11 @@ program over USB into the chip's flash, then lets it run.
 The collective name for that set of programs is a **toolchain**. When the setup
 step says `brew install avr-gcc`, it is installing an entire AVR toolchain: a
 linker, the standard startup code, and a library of helper routines. Rust cannot
-do without it, and the reason is worth stating plainly rather than treating as a
-packaging accident — `rustc` is a compiler. It is not a linker, and it does not
-ship a C runtime. On a hosted target that is invisible because the system C
-compiler is already installed and rustc quietly uses it. Here nothing is
-pre-installed, and one of the missing pieces is the program's beginning.
+do without it, and the reason is not a packaging accident — `rustc` is a
+compiler. It is not a linker, and it does not ship a C runtime. On a hosted
+target that is invisible because the system C compiler is already installed and
+rustc quietly uses it. Here nothing is pre-installed, and one of the missing
+pieces is the program's beginning.
 
 ## Flash, RAM, and registers
 
@@ -325,8 +325,8 @@ description of the chip. A **HAL** (Hardware Abstraction Layer), `avr-hal`,
 turns registers into concepts: pins, delays, serial ports. A **board crate**,
 `arduino-hal`, fills in the specifics of *this* board.
 
-The remarkable property, and the reason this is worth doing, is the bracket on
-the right of that diagram: **these layers cost nothing at runtime.** The compiler
+The remarkable property, and the reason to do it at all, is the bracket on the
+right of that diagram: **these layers cost nothing at runtime.** The compiler
 inlines them all away, so `led.toggle()` becomes the same one or two machine
 instructions you would have written by hand. But that guarantee depends on
 optimisation being switched on — which is a claim I am going to have to measure

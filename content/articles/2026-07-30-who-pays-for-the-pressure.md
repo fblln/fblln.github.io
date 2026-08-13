@@ -358,11 +358,11 @@ recommends around a fifteen-minute delay for cloud metrics. It exists for a
 completely real reason: metrics arrive late, and evaluating a window before
 its data has landed produces false alarms.
 
-But look at what the field is. It is an implementation timer, exposed raw. The
-underlying question is semantic — *does this rule evaluate on the time the
-event happened or the time we received it?* — and the API answers it with a
-tuning knob and a suggested value. The caller is told how long to wait
-without being told what they are waiting for.
+But the field is an implementation timer, exposed raw. The underlying question
+is semantic — *does this rule evaluate on the time the event happened or the
+time we received it?* — and the API answers it with a tuning knob and a
+suggested value. The caller is told how long to wait without being told what
+they are waiting for.
 
 Every event-evaluating API owes its callers answers to a specific list, and
 most of them answer none of it in the schema:
@@ -432,12 +432,12 @@ In every row the pressure is real and the engineering behind it is competent.
 In every row the response was placed on the caller's side of the boundary,
 where it is permanent and multiplied.
 
-The recurring cause is worth naming, because it is not incompetence and it is
-not laziness. It is that the fastest way to ship a capability is to expose the
-mechanism that implements it. The mechanism already exists. It already has
-names. Publishing it costs one afternoon; designing an interface that hides it
-costs a week and an argument. The bill for that afternoon arrives later, in
-somebody else's budget, which is precisely why it keeps getting signed.
+The recurring cause is not incompetence and it is not laziness. It is that the
+fastest way to ship a capability is to expose the mechanism that implements it.
+The mechanism already exists. It already has names. Publishing it costs one
+afternoon; designing an interface that hides it costs a week and an argument.
+The bill for that afternoon arrives later, in somebody else's budget, which is
+precisely why it keeps getting signed.
 
 ## The questions I would ask in review
 
