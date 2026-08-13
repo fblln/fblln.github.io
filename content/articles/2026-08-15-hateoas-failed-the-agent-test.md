@@ -296,19 +296,6 @@ MCP's unit of discovery is a described callable operation. HATEOAS's is a state
 transition embedded in a representation. That sentence is the difference between
 the two architectures, and everything else is consequence.
 
-## The irony had already been noticed
-
-People saw it coming and said so in public, before the result was in. In
-developer discussion from around the time agent tooling started spreading, the
-observation turns up unprompted: the irony behind HATEOAS is that LLMs are the
-mythical "evolvable agents" necessary to make it work in the first place. These
-are comment threads rather than evidence about protocol behaviour, and I offer
-them as a record of what practitioners expected.
-
-Which makes the outcome interesting rather than merely disappointing. The
-resurrection was predicted, by the right people, for the right reasons, at the
-right moment. The dominant protocol still chose described tools.
-
 ## What a schema does not tell you
 
 Six months ago I would have concluded that once you can ask a server *what can I
@@ -432,27 +419,10 @@ re-read against whatever revision is current when you do.
 9. JSON Hypertext Application Language (HAL) — the `_links` convention.
    https://www.ietf.org/archive/id/draft-kelly-json-hal-11.html
 
-**Community observation**
-
-10. Hacker News, “OpenAI adds MCP support to Agents SDK,” March 2026 — the
-    observation that LLMs are the “evolvable agents” HATEOAS required, and that
-    browser-like clients conformed by delegating the hard parts to a human.
-    Cited as developer argument, not as authority on protocol behaviour.
-    https://news.ycombinator.com/item?id=43485566
-
-11. Hacker News, “MCP vs API Explained,” 2026 — the argument that AI could
-    produce a new hypermedia-style Web.
-    https://news.ycombinator.com/item?id=43302297
-
-12. Hacker News, “MCP: An (Accidentally) Universal Plugin System,” 2026 —
-    whether machine hypermedia clients can work, and whether HATEOAS assumes
-    human agency.
-    https://news.ycombinator.com/item?id=44405245
-
 **In this series**
 
-13. Fabio Ellena, “The Browser Was Never the Smart Client,” 2026 — Part I.
+10. Fabio Ellena, “The Browser Was Never the Smart Client,” 2026 — Part I.
     https://fblln.github.io/articles/the-browser-was-never-the-smart-client/
 
-14. Fabio Ellena, “HATEOAS Priced the Wrong Change,” 2026 — Part II.
+11. Fabio Ellena, “HATEOAS Priced the Wrong Change,” 2026 — Part II.
     https://fblln.github.io/articles/hateoas-priced-the-wrong-change/

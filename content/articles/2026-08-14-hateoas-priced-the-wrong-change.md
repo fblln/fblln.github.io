@@ -135,11 +135,10 @@ never mentioned in the argument. The reason teams love OpenAPI and Protobuf is
 not the generated client. It is that a breaking change fails a build.
 
 `oasdiff` diffs two OpenAPI documents, classifies what broke, and runs as a
-GitHub Action on the pull request. Buf does the equivalent for Protobuf schemas.
-Pact goes further, in the other direction: a consumer's tests generate a
-contract, and "contract by example" is the project's own phrase for it. The
-provider's pipeline verifies against the real expectations of its real
-consumers, so only the parts actually used get tested.
+GitHub Action on the pull request. The artifact is the thing that makes that
+possible: two versions of a file, a machine that can tell you what changed
+between them, and a red build when the answer is "something a caller depended
+on."
 
 Now ask what the equivalent is for a hypermedia API. The contract is the media
 type. There is no artifact to diff, no document to version, no schema for a CI
@@ -335,63 +334,43 @@ That is Part III.
 
 **The pipeline gate**
 
-7. Pact — consumer-driven contract testing; the contract generated during the
-   consumer's tests, “contract by example,” and verification of only what
-   consumers actually use.
-   https://docs.pact.io/
-
-8. oasdiff — command-line OpenAPI diff and breaking-change detection, run
+7. oasdiff — command-line OpenAPI diff and breaking-change detection, run
    locally or as a CI action on the pull request.
    https://github.com/oasdiff/oasdiff
 
-9. Buf — breaking-change detection for Protocol Buffers schemas against a
-   previous version, wired into CI.
-   https://buf.build/docs/breaking/
-
-**The dashboard**
-
-10. OpenTelemetry, *Semantic Conventions for HTTP Spans* — span names as
-    `{method} {target}` with a low-cardinality target; “Instrumentation MUST NOT
-    default to using URI path as a `{target}`”; `http.route` as the matched
-    low-cardinality route template, not to be substituted by the URI path.
-    https://opentelemetry.io/docs/specs/semconv/http/http-spans/
+8. OpenTelemetry, *Semantic Conventions for HTTP Spans* — span names as
+   `{method} {target}` with a low-cardinality target; “Instrumentation MUST NOT
+   default to using URI path as a `{target}`”; `http.route` as the matched
+   low-cardinality route template, not to be substituted by the URI path.
+   https://opentelemetry.io/docs/specs/semconv/http/http-spans/
 
 **The retry**
 
-11. RFC 9110, *HTTP Semantics* — idempotent methods, and automatic retry after
-    a connection failure.
-    https://www.rfc-editor.org/rfc/rfc9110#name-idempotent-methods
+9. RFC 9110, *HTTP Semantics* — idempotent methods, and automatic retry after
+   a connection failure.
+   https://www.rfc-editor.org/rfc/rfc9110#name-idempotent-methods
 
-12. Carson Gross, “Hypermedia Clients” — links in JSON carrying no method
+10. Carson Gross, “Hypermedia Clients” — links in JSON carrying no method
     information.
     https://four.htmx.org/essays/hypermedia-clients
 
 **The mispricing**
 
-13. Stripe, *Versioning* — dated releases, the `Stripe-Version` header, major
+11. Stripe, *Versioning* — dated releases, the `Stripe-Version` header, major
     versus monthly releases.
     https://docs.stripe.com/api/versioning
 
-14. Stripe, *Upgrades* — the published list of backwards-compatible changes:
+12. Stripe, *Upgrades* — the published list of backwards-compatible changes:
     new resources, new optional request parameters, new response properties,
     property reordering, opaque string format, new event types. No entry
     concerns URLs.
     https://docs.stripe.com/upgrades
 
-15. MLflow, “REST API for AI Models Explained: 2026 Guide” — contemporary
-    guidance describing most production APIs as level-2 shaped, and treating
-    that as a deliberate tradeoff.
-    https://mlflow.org/articles/rest-api-for-ai-models-explained-2026-guide/
-
-16. Martin Fowler, “Richardson Maturity Model,” 2010 — the levels, and why level
-    3 stayed rare.
-    https://martinfowler.com/articles/richardsonMaturityModel.html
-
-17. Fabio Ellena, “Who Pays for the Pressure,” 2026 — pressure relocated onto a
+13. Fabio Ellena, “Who Pays for the Pressure,” 2026 — pressure relocated onto a
     contract, and who carries it.
     https://fblln.github.io/articles/who-pays-for-the-pressure/
 
 **In this series**
 
-18. Fabio Ellena, “The Browser Was Never the Smart Client,” 2026 — Part I.
+14. Fabio Ellena, “The Browser Was Never the Smart Client,” 2026 — Part I.
     https://fblln.github.io/articles/the-browser-was-never-the-smart-client/

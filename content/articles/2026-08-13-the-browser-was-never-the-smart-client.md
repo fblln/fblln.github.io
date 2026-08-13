@@ -380,11 +380,6 @@ the client must weigh an operation against a goal before acting.
 <figcaption>Stripe's <code>starting_after</code> and <code>has_more</code>, Kubernetes' <code>continue</code> token, and Elasticsearch's <code>search_after</code> are the same row again. Nobody copied anybody; the shape is forced by the problem.</figcaption>
 </figure>
 
-The dividend is real, and it is the one case where hypermedia's promised freedom
-gets spent. All four specifications insist the continuation be opaque, and a
-server can therefore migrate from `OFFSET` to a keyset predicate to a
-point-in-time snapshot scroll without one client changing a line.
-
 So the generalization is not "links are useless." It is narrower and more
 useful:
 
@@ -454,51 +449,44 @@ comes due in operations, and it is itemized in Part II.
    modern case for the constraint, on the surface where a human is reading.
    https://hypermedia.systems/
 
-7. Hacker News, “OpenAI adds MCP support to Agents SDK,” March 2026 — community
-   discussion, cited as recurring developer intuition rather than authority;
-   the observation that browser-like clients conform by delegating the hard
-   parts to a human.
-   https://news.ycombinator.com/item?id=43485566
-
 **The vocabulary**
 
-8. RFC 8288, *Web Linking* — link relation types, and the rule that extension
+7. RFC 8288, *Web Linking* — link relation types, and the rule that extension
    relation types are URIs.
    https://www.rfc-editor.org/rfc/rfc8288
 
-9. IANA Link Relations registry — the registered vocabulary, including
+8. IANA Link Relations registry — the registered vocabulary, including
    `payment`, and the absence of any domain verb resembling `cancel` or
    `refund`.
    https://www.iana.org/assignments/link-relations/link-relations.xhtml
 
-10. JSON Hypertext Application Language (HAL) — the `_links` convention the
-    examples follow.
-    https://www.ietf.org/archive/id/draft-kelly-json-hal-11.html
+9. JSON Hypertext Application Language (HAL) — the `_links` convention the
+   examples follow.
+   https://www.ietf.org/archive/id/draft-kelly-json-hal-11.html
 
 **Pagination**
 
-11. Google API Improvement Proposal 158, *Pagination* — `page_size`,
-    `page_token`, `next_page_token`; tokens must be opaque and not
-    user-parseable; and must not confer authorization.
+10. Google API Improvement Proposal 158, *Pagination* — `page_size`,
+    `page_token`, `next_page_token`.
     https://google.aip.dev/158
 
-12. Model Context Protocol, *Pagination* — the opaque cursor model, `cursor`
+11. Model Context Protocol, *Pagination* — the opaque cursor model, `cursor`
     and `nextCursor`, and the MUST-treat-as-opaque client rules.
     https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination
 
-13. GraphQL Cursor Connections Specification — `edges`, `cursor`, and
+12. GraphQL Cursor Connections Specification — `edges`, `cursor`, and
     `pageInfo` with `hasNextPage` and `endCursor`.
     https://relay.dev/graphql/connections.htm
 
-14. Stripe API reference, *Pagination* — `starting_after`, `ending_before`,
+13. Stripe API reference, *Pagination* — `starting_after`, `ending_before`,
     `has_more`.
     https://docs.stripe.com/api/pagination
 
 **The ideas**
 
-15. John Ousterhout, *A Philosophy of Software Design*, Second Edition. Yaknyam
+14. John Ousterhout, *A Philosophy of Software Design*, Second Edition. Yaknyam
     Press, 2021.
     https://web.stanford.edu/~ouster/cgi-bin/book.php
 
-16. Fabio Ellena, “Who Pays for the Pressure,” 2026.
+15. Fabio Ellena, “Who Pays for the Pressure,” 2026.
     https://fblln.github.io/articles/who-pays-for-the-pressure/

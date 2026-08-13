@@ -306,32 +306,14 @@ reduce transition ambiguity, in exactly the place theory said the win would be.
 It does not show that dynamic hypermedia beats typed tools in general, and
 nobody should cite it for that.
 
-## Hydra: the operation as a first-class thing
+## Hydra had already separated the two halves
 
-HAL-FORMS solves availability and invocation. Hydra goes further on semantics.
+A Hydra `Operation` carries `method`, `expects`, `returns` and `possibleStatus`,
+which is not far off an MCP tool definition minted a decade earlier. Anyone who
+tells you hypermedia cannot express schemas has looked at HAL and stopped.
 
-A Hydra `Operation` describes what a client needs in order to construct a valid
-request, and it carries `method`, `expects` (what the server wants sent),
-`returns` (what it sends back), and `possibleStatus`, the status codes you might
-get and what each one means:
-
-```text
-Hydra resource
-    |
-    +-- operation: cancel
-          method:  POST
-          expects: CancellationRequest
-          returns: Order
-          status:  409 if already fulfilled
-```
-
-Name, method, input type, output type, error semantics: not far off an MCP tool
-definition, in a different serialization, minted by a community group a decade
-earlier. Anyone who tells you hypermedia cannot express schemas has looked at
-HAL and stopped.
-
-The interesting part is that operations attach in two places, and they are
-precisely the two halves this series has been trying to separate.
+But the part that matters here is *where those operations attach*, because it is
+the distinction this series has spent four articles drawing.
 `supportedOperation` on a class is a stable vocabulary: all orders can, in
 principle, be cancelled. An inline operation on a representation is contextual:
 *this* order, in its current state, offers cancellation. Hydra already
