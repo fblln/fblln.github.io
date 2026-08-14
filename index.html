@@ -38,6 +38,14 @@
     <link data-trunk rel="copy-dir" href="assets" />
     <link data-trunk rel="copy-file" href="robots.txt" />
     <link data-trunk rel="copy-file" href="sitemap.xml" />
+    <!-- GitHub Pages resolves missing routes before the WASM application boots.
+         Ship the error surface and its shared design-token inputs as plain files
+         so a broken URL still receives the complete portfolio visual language. -->
+    <link data-trunk rel="copy-file" href="404.html" />
+    <link data-trunk rel="copy-file" href="404.css" />
+    <link data-trunk rel="copy-file" href="shared/tokens.css" />
+    <link data-trunk rel="copy-file" href="shared/typography.css" />
+    <link data-trunk rel="copy-file" href="shared/header.css" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
