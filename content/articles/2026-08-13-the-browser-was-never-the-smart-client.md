@@ -1,58 +1,53 @@
 +++
-title = "The Browser Was Never the Smart Client"
+title = "The Browser Was Only Half the Client"
 date = "2026-08-13"
-description = "A browser can operate a site it has never seen, which is the strongest argument hypermedia has ever had, and it is usually told with one component missing. The browser understands anchors, forms, methods and URLs. It does not understand what cancelling an order costs, whether it is reversible, or how it differs from a refund — a human standing in front of the screen understands that. Delete the human and the same architecture stops working, not because links are hard to parse, but because a program cannot learn a business concept from the fact that the server gave it a URL. First of four on hypermedia, agents, and the part of the constraint worth keeping."
+description = "A browser can operate a site it has never seen because it shares the work with a person. That does not make hypermedia useless to machines, but it does reveal what the constraint can and cannot supply: controls can bind known operations to current resources without teaching a client what those operations mean. First of three on the contracts hidden inside HATEOAS."
 tags = ["API Design", "Protocols", "Architecture", "Complexity"]
 +++
 
-*First of four. This part is about what a machine client cannot understand.
-Part II is about what traversal costs even when it does. Part III is about what
-happened when the clients stopped being ordinary. Part IV is about the piece of
-the idea that survives all three.*
+*First of three. This part separates the three contracts that API designs keep
+trying to make one mechanism carry. [Part II](/articles/hateoas-priced-the-wrong-change/)
+asks when runtime controls are worth their cost.
+[Part III](/articles/stable-verbs-dynamic-affordances/) builds the hybrid.*
 
 One line of markup, barely changed since 1993, underwrites the most successful
-distributed system anybody has ever shipped.
+distributed system anybody has shipped.
 
 ```html
 <a href="/orders/123/cancel">Cancel order</a>
 ```
 
-The browser understands a great deal about that line. That this is an anchor,
-that the thing inside the quotes is a URL, that the URL can be resolved against
-the current document, that activating it means an HTTP GET, that the response
-will carry a status and a content type, that a `3xx` means somewhere else and a
-`4xx` means it went wrong. That is a genuinely large amount of knowledge, none
-of it specific to this server, and all of it shipped years before this
-particular order existed.
+The browser understands a great deal about that line. It knows that this is an
+anchor, that the value in quotes is a URI, that the URI can be resolved against
+the current document, that activating it retrieves another representation, and
+that the response will carry a status and a media type. None of that knowledge
+is specific to this order or this server.
 
-About *cancelling* it understands nothing. It does not know whether cancelling
-this order is free or carries a restocking fee, whether it can be undone,
-whether it is the same as a refund or a precondition for one, whether it will
-annoy the warehouse, or whether it is the right thing to do at all given that
-the customer only wanted to change the delivery address. Every one of those
-questions has an answer, the answer matters, and the answer is not in the
-markup.
+About *cancelling*, it understands nothing. It does not know whether cancellation
+is free, whether it can be undone, how it differs from a refund, or whether it is
+the right response to a customer asking to change an address.
 
-Somebody supplies it. That somebody is a person, sitting in front of the
-screen, who read the words "Cancel order" and already knew what those words
-mean because they have lived in a world with orders in it. The browser rendered
-an affordance. The human decided whether the affordance was worth taking.
+Somebody supplies that judgment. On the Web it is normally a person who read
+"Cancel order" and already understood orders. The browser supplies uniform
+mechanics. The reader supplies a goal and domain knowledge. Together they make a
+client that can enter an application it has never seen and still get useful work
+done.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 254" role="img" aria-label="Two four-stage chains side by side. On the left, labelled the Web with a reader: server, then browser which knows anchors forms methods and URLs, then a human at read time who knows what cancelling costs and whether to do it, then action. On the right, labelled an API without one: server, then program which knows JSON relation names methods and URLs, then a dashed empty box where the reader would be, then action. Beside the empty box sits a filled box labelled developer at build time, whose arrow runs sideways and upward into the program rather than down the chain.">
+<svg viewBox="0 0 620 254" role="img" aria-label="Two four-stage chains. On the left a server sends HTML to a browser, a human supplies domain judgment, and an action follows. On the right a server sends a machine representation to a program, while domain knowledge arrives from a developer or model rather than from the representation itself.">
   <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
-    <text x="0" y="12">THE WEB &middot; WITH A READER</text>
-    <text x="330" y="12">AN API &middot; WITHOUT ONE</text>
+    <text x="0" y="12">THE WEB</text>
+    <text x="330" y="12">A MACHINE API</text>
   </g>
   <g font-family="var(--font-mono)" font-size="9">
     <rect x="0" y="26" width="270" height="24" fill="none" stroke="var(--line)"/>
-    <text x="135" y="42" fill="var(--ink)" text-anchor="middle">SERVER &middot; text/html</text>
+    <text x="135" y="42" fill="var(--ink)" text-anchor="middle">SERVER · text/html</text>
     <rect x="0" y="72" width="270" height="40" fill="none" stroke="var(--line)"/>
     <text x="12" y="88" fill="var(--ink)">BROWSER</text>
-    <text x="12" y="104" fill="var(--muted)">anchors, forms, methods, URLs</text>
+    <text x="12" y="104" fill="var(--muted)">anchors, forms, methods, URIs</text>
     <rect x="0" y="134" width="270" height="40" fill="var(--signal)"/>
-    <text x="12" y="150" fill="var(--paper)">HUMAN &middot; at read time</text>
-    <text x="12" y="166" fill="var(--paper)">what cancel costs &middot; whether to</text>
+    <text x="12" y="150" fill="var(--paper)">HUMAN</text>
+    <text x="12" y="166" fill="var(--paper)">goals, meaning, consequences</text>
     <rect x="0" y="196" width="270" height="24" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
     <text x="135" y="212" fill="var(--ink)" text-anchor="middle">ACTION</text>
   </g>
@@ -63,43 +58,38 @@ an affordance. The human decided whether the affordance was worth taking.
   </g>
   <g font-family="var(--font-mono)" font-size="9">
     <rect x="330" y="26" width="290" height="24" fill="none" stroke="var(--line)"/>
-    <text x="475" y="42" fill="var(--ink)" text-anchor="middle">SERVER &middot; application/hal+json</text>
+    <text x="475" y="42" fill="var(--ink)" text-anchor="middle">SERVER · machine representation</text>
     <rect x="330" y="72" width="290" height="40" fill="none" stroke="var(--line)"/>
     <text x="342" y="88" fill="var(--ink)">PROGRAM</text>
-    <text x="342" y="104" fill="var(--muted)">JSON, relation names, methods, URLs</text>
-    <rect x="330" y="134" width="130" height="40" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>
-    <text x="342" y="158" fill="var(--muted)">&mdash; nobody &mdash;</text>
-    <rect x="480" y="134" width="140" height="40" fill="var(--signal)"/>
-    <text x="492" y="150" fill="var(--paper)">DEVELOPER</text>
-    <text x="492" y="166" fill="var(--paper)">at build time</text>
+    <text x="342" y="104" fill="var(--muted)">media type, controls, transport</text>
+    <rect x="330" y="134" width="290" height="40" fill="var(--signal)"/>
+    <text x="342" y="150" fill="var(--paper)">DEVELOPER, POLICY OR MODEL</text>
+    <text x="342" y="166" fill="var(--paper)">goals, meaning, consequences</text>
     <rect x="330" y="196" width="290" height="24" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
     <text x="475" y="212" fill="var(--ink)" text-anchor="middle">ACTION</text>
   </g>
   <g stroke="var(--signal)" fill="none">
     <path d="M475 50 L475 66 M471 60 L475 66 L479 60"/>
-    <path d="M395 112 L395 128 M391 122 L395 128 L399 122"/>
-    <path d="M550 134 L550 122 L420 122 L420 116 M416 122 L420 116 L424 122"/>
+    <path d="M475 112 L475 128 M471 122 L475 128 L479 122"/>
+    <path d="M475 174 L475 190 M471 184 L475 190 L479 184"/>
   </g>
-  <path d="M395 174 L395 190" stroke="var(--line)" stroke-dasharray="3 3" fill="none"/>
-  <text x="0" y="244" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">on the right the third row did not shrink; it moved off the chain and into the source</text>
+  <text x="0" y="244" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">hypermedia supplies the controls; something else supplies the purpose</text>
 </svg>
-<figcaption>The browser is not the smart client. It is the generic half of a two-part client whose other half is a person. The right column keeps the mechanics, loses the reader, and gets its replacement on a different axis: sideways, from a developer, before the first call was ever made.</figcaption>
+<figcaption>The browser is the generic half of the Web client, not the whole of it. Machine clients need the same second row. Sometimes it is compiled by a developer, sometimes imposed by policy, and sometimes supplied at runtime by a model. A representation can expose a choice without supplying the goal by which that choice should be judged.</figcaption>
 </figure>
 
-That missing row is the subject of this article. The left column is one of the
-best architectural decisions anybody has made and it is still paying; the
-problem is that almost every argument about REST in machine-to-machine APIs is
-conducted as though the two columns were the same diagram.
+That observation is often turned into a verdict: HATEOAS works for humans and
+is wasted on machines. The verdict is too broad. It correctly identifies a job
+hypermedia does not do, then treats that job as the only one worth doing.
 
-## The constraint, stated properly
+The better question is which contract a control actually carries.
 
-Fielding lists four interface constraints: identification of resources,
-manipulation of resources through representations, self-descriptive messages,
-and hypermedia as the engine of application state. The fourth has a mechanism
-attached. REST "concentrates all of the control state into the representations
-received in response to interactions," so the client's model of what it may do
-next comes from the last thing the server sent and from nowhere else. In
-practice that produces the familiar shape:
+## What the constraint promises
+
+Fielding's fourth uniform-interface constraint concentrates control state in the
+representations a client receives. The server presents possible transitions;
+the client chooses one. In a JSON format, the familiar minimal example looks
+like this:
 
 ```json
 {
@@ -112,81 +102,85 @@ practice that produces the familiar shape:
 }
 ```
 
-The order is pending, so `cancel` is there. Ship it, and `cancel` is gone. The
-client never encodes the state machine; it re-reads the available transitions
-out of each representation, and because they are derived from state the server
-actually holds, they are never stale.
+Ship the order and the `cancel` control disappears. The useful claim is not that
+the client learns the meaning of cancellation from six letters. It is that the
+server remains authoritative about whether this particular order currently
+offers that transition and where the transition leads.
 
-This is genuinely attractive. Every team that has shipped a bug where the
-client's idea of "cancellable" drifted from the server's (a disabled button that
-should have been enabled, a request rejected with a 409 the UI swore was legal)
-has shipped the bug this constraint exists to prevent. The server is the
-authority on its own state, and having it say so in the response is not a
-purist's affectation but the correct division of responsibility.
+That is narrower than the claim usually made for HATEOAS, but it is not small.
+Every team has shipped some version of the bug where a client inferred
+"cancellable" from a stale status mapping and the server rejected the call. A
+control derived from the state and policy the server actually holds can remove
+that duplicated inference.
 
-Fielding's 2008 restatement is stricter than most people who quote it remember.
-A REST API "must not define fixed resource names or hierarchies." It should
-"spend almost all of its descriptive effort in defining the media type(s)," and
-should "never have 'typed' resources that are significant to the client." A
-client enters it "with no prior knowledge beyond the initial URI (bookmark) and
-set of standardized media types."
+It cannot remove the final race. The order may ship after the representation is
+read and before the action is submitted. The server must still authorize and
+validate every transition. Hypermedia makes the client's information more
+current; it does not make distributed state stop changing.
 
-Any processing rule living outside the media type is therefore out-of-band
-information driving the interaction, which is the failure mode the constraint
-exists to prevent.
+Fielding is also less magical about prior knowledge than some summaries of REST.
+Clients know protocols, media types, relation types and vocabularies. Some of
+that vocabulary may be domain-specific. The constraint does not eliminate the
+need for a shared language; it tries to concentrate that language in reusable
+processing models and put the service-specific choices in-band.
 
-That last clause decides everything that follows, because it determines whether
-the constraint is about *coupling* or about *where the coupling is written
-down*.
+The argument therefore is not *coupling versus no coupling*. It is what kind of
+coupling exists, where it is recorded, and how often it changes.
 
-## The browser had a component nobody counted
+## Three contracts hiding in one control
 
-HATEOAS is easy to believe because it was not invented; it was extracted from a
-working system. A browser really can operate a site it has never seen, and no
-client release is needed when the site adds a page. This is not a thought
-experiment. It is Tuesday.
+`cancel` appears to be one fact. It is at least three.
 
-Carson Gross made the argument that explains why. His framing is about agency: a
-hypermedia client has to decide, at runtime, which of the offered controls
-serves its purpose, and "code doesn't (yet) have agency." A person does. The
-browser supplies uniform mechanics (it knows what an anchor is, what a form is,
-how a method works) and delegates every question of *meaning* upward, to a
-consumer that already understands orders and refunds and shipping and
-consequences. His conclusion is blunt and, on the evidence, correct: "HATEOAS is
-largely wasted on machines."
+| Contract | Question it answers | Typical change rate |
+|---|---|---|
+| Operation semantics | What does cancellation mean, what inputs does it take, and what are its consequences? | slow |
+| Current applicability | May this caller cancel this order in its present state? | fast |
+| Invocation binding | Where and how is that transition invoked, and which arguments are already known? | medium or fast |
 
-The precise formulation matters, because the sloppy version invites an easy
-rebuttal. It is not that HTML is smart. HTML is a standardized vocabulary,
-interpreted by a generic browser, presented to an intelligent reader, and that
-*combination* is what makes evolution cheap. Rename the button, add a field,
-introduce a whole new step in the flow, and no client anywhere needs
-recompiling, because the component that has to understand the change is a
-person.
+The first is a dictionary entry. The second is a statement about a situation.
+The third connects the two to a transport.
 
-When people carried the architecture across to machine-to-machine APIs, they
-carried the bottom half and quietly dropped the top, then expressed surprise
-that the remaining piece did not cover the gap.
+A relation and an `href` compress all three into a small control, but they do not
+describe all three equally well. `cancel` names a concept only a domain-aware
+consumer can interpret. Its presence is good evidence of current applicability.
+The `href` binds that applicability to an invocation target. Basic HAL says
+nothing about a submission method or request fields; form-oriented hypermedia
+formats do, and Part III takes them seriously.
 
-## Semantic coupling is not accidental coupling
+OpenAPI and RPC systems usually arrange the contracts differently. They define
+the operation and its invocation in a description that a client can compile,
+then leave current applicability to status fields, prose, policy checks or
+execution errors. Neither arrangement makes a contract disappear. Each makes a
+different one authoritative at a different time.
 
-I have built this integration more times than I can count, and it goes the same
-way every time.
+This distinction is the spine of the series:
 
-You are handed an OpenAPI document. You do not read it. You run a generator
-(`openapi-generator`, `oapi-codegen`, `openapi-typescript`, NSwag, whichever one
-your language uses) and out comes a client with one method per `operationId`,
-typed parameters, typed responses, typed errors. Then you write this:
+> Operation semantics, current applicability and invocation binding are
+> different contracts with different update frequencies.
+
+Once they are separated, the old choice between a typed API and HATEOAS stops
+looking binary.
+
+## The generated client drew one contract and omitted another
+
+The ordinary machine integration makes the split visible. You are handed an
+OpenAPI document, run a generator, and receive a client with one method per
+`operationId`, typed parameters and typed responses. Then you write:
 
 ```ts
 const order = await api.getOrder({ orderId });
-if (order.status === "pending") await api.cancelOrder({ orderId });
+if (order.status === "pending") {
+  await api.cancelOrder({ orderId, reason });
+}
 ```
 
-And inside the generated method, compiled into your build artifact, is the
-string `/orders/{orderId}/cancel`.
+The generated client knows that `cancelOrder` exists, where to send it and what
+arguments it accepts. It does not know why the `pending` branch is correct. The
+generator gave `cancelOrder`, `refundOrder` and `createReturn` the same standing;
+the developer supplied the lifecycle from documentation and memory.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 212" role="img" aria-label="An order lifecycle drawn left to right as four stages: created, paid, shipped, delivered. Beneath it three overlapping bars mark where each generated method is the correct one. cancelOrder spans created and paid. refundOrder spans paid and shipped. createReturn spans shipped and delivered. The bars form a staircase sliding rightwards. A footer notes the generator emitted all three with identical standing and the document never drew this row.">
+<svg viewBox="0 0 620 212" role="img" aria-label="An order lifecycle drawn left to right as created, paid, shipped and delivered. Beneath it, overlapping bars show where cancelOrder, refundOrder and createReturn apply. The generated methods do not contain this applicability row.">
   <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">THE ORDER LIFECYCLE</text>
   <g font-family="var(--font-mono)" font-size="9" text-anchor="middle">
     <rect x="0" y="22" width="140" height="26" fill="none" stroke="var(--line)"/>
@@ -203,7 +197,7 @@ string `/orders/{orderId}/cancel`.
     <path d="M300 35 L316 35 M310 31 L316 35 L310 39"/>
     <path d="M460 35 L476 35 M470 31 L476 35 L470 39"/>
   </g>
-  <text x="0" y="72" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">WHERE EACH GENERATED METHOD IS THE RIGHT ONE</text>
+  <text x="0" y="72" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">WHERE EACH GENERATED METHOD APPLIES</text>
   <g font-family="var(--font-mono)" font-size="9" fill="var(--paper)">
     <rect x="0" y="82" width="300" height="26" fill="var(--signal)"/>
     <text x="12" y="99">cancelOrder</text>
@@ -212,113 +206,97 @@ string `/orders/{orderId}/cancel`.
     <rect x="320" y="154" width="300" height="26" fill="var(--signal)"/>
     <text x="332" y="171">createReturn</text>
   </g>
-  <text x="0" y="202" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the generator emitted all three with identical standing; the document never drew this row</text>
+  <text x="0" y="202" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the schema defined the methods; the developer supplied this row</text>
 </svg>
-<figcaption>The generator gave the three methods the same shape, the same types and the same call site. Which one is correct depends on a row the OpenAPI document does not contain, and the developer drew it from memory. A link would have saved the last mile of the generated column, interpolating an id into a path. It would not have drawn a single one of these bars.</figcaption>
+<figcaption>A typed description does an excellent job on operation identity and shape. Applicability is a different contract. Unless the API describes it explicitly, the client reconstructs it from fields, prose and failed requests.</figcaption>
 </figure>
 
-Fielding is unambiguous about what that generated client is. The prohibition
-quoted above calls fixed resource names "an obvious coupling of client and
-server," and minting them is the generated client's entire purpose. Nobody on
-the team experiences this as a violation. They experience it as having finished
-by lunchtime.
+A bare `cancel` link would not teach the client the lifecycle either. What it can
+do is replace the hand-drawn applicability row with a current statement: this
+order offers cancellation now. Richer controls can also bind the order ID and
+submission target. That is already enough to matter, even though the meaning of
+cancellation remains shared knowledge.
 
-The interesting question is not whether they broke a rule. It is which coupling
-they actually took on, because there are two and they are usually billed as
-one.
+The missing row therefore does not show that clients should know nothing. It
+shows that they carry two very different kinds of knowledge, and only one of
+them is a plausible target for architectural decoupling.
 
-**Accidental coupling** is the client knowing which service owns the routing
-table, which region a device was provisioned into, which internal table a field
-came from. I have written before about
-[what that costs and who ends up paying it](/articles/who-pays-for-the-pressure/):
-pressure that was real inside the implementation, relocated onto the contract,
-where every caller carries it forever.
+## Semantic coupling is not a design failure
 
-**Semantic coupling** is the client knowing what a refund is. An invoicing
-client coupled to the semantics of invoices is not a design failure; it is the
-reason the client exists. You cannot decouple from it. A design that appears to
-have done so has usually just stopped writing it down.
+An invoicing client coupled to the meaning of invoices is not broken. That
+coupling is why the client exists. A refund processor has to know what a refund
+does regardless of whether it calls `refundPayment(id)`, follows a
+`refund-payment` relation, or submits an HTML form labelled "Refund."
 
-Ousterhout's test decides which one hypermedia is charging for: a module earns
-its keep by the ratio of what it hides to what it charges. Hypermedia charges a
-vocabulary of relation names, media types and traversal rules, plus a discovery
-round trip. It hides URL construction. That ratio gets worse as the client gets
-better, because a capable client was never going to struggle with URL
-construction anyway.
+What architecture can remove is accidental knowledge: which internal service
+owns a route, how identifiers are interpolated, whether a target is regional or
+signed, which transition is currently legal, or which fields the server can
+already bind. Those are implementation or situation facts rather than the
+business purpose of the client.
 
-## Discoverability was never the expensive coupling
+This gives hypermedia a more defensible ambition. It does not decouple the
+consumer from the domain. It can decouple the consumer from parts of the
+domain's current arrangement.
 
-The strongest case for the constraint is decoupling: put URLs in responses and
-the client stops hard-coding them, so the server can restructure freely. A real
-benefit, just not the one the bill is for.
+The value depends on how expensive those parts are. Interpolating an order ID
+into a stable path is cheap accidental knowledge. Reproducing an authorization
+policy that depends on fulfilment state, warehouse ownership and account risk
+is not. “Hypermedia hides URL construction” is therefore both true and too
+small: a useful control hides or reports whatever its media type is capable of
+carrying. A link-only format carries little. A form can carry considerably
+more.
 
-Fielding's answer to this objection is precise: relation names must be
-standardized, and descriptive effort belongs in the media type. So look at what
-has actually been standardized. The IANA link relations registry is a small,
-stable vocabulary about documents: `next`, `prev`, `first`, `last`, `up`;
-`alternate`, `stylesheet`, `icon`; `author`, `describedby`, `edit`, `search`.
-And `payment`, registered against RFC 8288, whose entire published meaning is
-that it indicates a resource where payment is accepted.
+The distinction also explains why a new relation is not automatically useful.
+An adaptable client may be able to read a description of a relation it has
+never seen, and a language model may reason about that description. But a new
+URI alone does not teach a new business concept. Whether descriptions are
+sufficient for genuinely novel operations is now an empirical question, not a
+property delivered by the link syntax.
 
-<figure class="diagram">
-<svg viewBox="0 0 620 176" role="img" aria-label="Two rows of link relations. The top row shows five outlined registered relations: next, edit, describedby, search and payment, annotated that a generic client can resolve these because they are registered and mean the same everywhere. The bottom row shows three filled domain operations: refund_payment, approve_loan and rotate_credentials, annotated that these are not registered, cannot usefully be, and must be defined in prose that the client reads out of band.">
-  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">WHAT A GENERIC CLIENT CAN RESOLVE ON ITS OWN</text>
-  <g font-family="var(--font-mono)" font-size="9" text-anchor="middle">
-    <rect x="0" y="28" width="96" height="24" fill="none" stroke="var(--line)"/>
-    <text x="48" y="44" fill="var(--ink)">next</text>
-    <rect x="106" y="28" width="96" height="24" fill="none" stroke="var(--line)"/>
-    <text x="154" y="44" fill="var(--ink)">edit</text>
-    <rect x="212" y="28" width="130" height="24" fill="none" stroke="var(--line)"/>
-    <text x="277" y="44" fill="var(--ink)">describedby</text>
-    <rect x="352" y="28" width="120" height="24" fill="none" stroke="var(--line)"/>
-    <text x="412" y="44" fill="var(--ink)">search</text>
-    <rect x="482" y="28" width="138" height="24" fill="none" stroke="var(--line)"/>
-    <text x="551" y="44" fill="var(--ink)">payment</text>
-  </g>
-  <text x="0" y="70" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">registered &middot; a small stable set &middot; the same everywhere</text>
-  <g font-family="var(--font-mono)" font-size="9" text-anchor="middle">
-    <rect x="0" y="94" width="196" height="24" fill="var(--signal)"/>
-    <text x="98" y="110" fill="var(--paper)">refund_payment</text>
-    <rect x="206" y="94" width="186" height="24" fill="var(--signal)"/>
-    <text x="299" y="110" fill="var(--paper)">approve_loan</text>
-    <rect x="402" y="94" width="218" height="24" fill="var(--signal)"/>
-    <text x="511" y="110" fill="var(--paper)">rotate_credentials</text>
-  </g>
-  <text x="0" y="136" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">not registered &middot; not registerable &middot; documented in your prose</text>
-  <path d="M0 150 L620 150" stroke="var(--line)" fill="none"/>
-  <text x="0" y="170" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the standard vocabulary describes documents</text>
-  <text x="620" y="170" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="end">your API describes a business</text>
-</svg>
-<figcaption>The registry is real, useful, and almost entirely about navigating and describing documents. Every verb that makes an API worth calling lives in the second row, where the standardized-relation argument runs out and the contract has to be written down somewhere a client can read it.</figcaption>
-</figure>
+That leaves a practical question: if the link does not supply meaning, where
+does the shared meaning come from? The answer is the same place it comes from
+in every interface — a vocabulary — but hypermedia makes the shape of that
+vocabulary especially visible.
 
-There is no `cancel`. There is no `refund`. There will not be, and it is not an
-oversight: RFC 8288 handles this case by saying extension relation types are
-URIs. Which is the correction and also the concession. You mint
-`https://example.com/rels/refund`, publish a page explaining what it means, and
-every client author reads that page before writing a line. The processing rules
-now live outside the media type, which by Fielding's own 2008 criterion is
-out-of-band information driving the interaction.
+## Shared vocabulary is still a contract
 
-So the honest comparison was never *contract versus no contract*. It is:
+The IANA link-relation registry contains a compact vocabulary that transfers
+well between domains: `next`, `prev`, `first`, `last`, `up`, `alternate`,
+`describedby`, `edit`, `search`. A generic client can attach useful behavior to
+those relations because their semantics were standardized elsewhere and stay
+roughly the same everywhere.
 
-| | Where the meaning is written | What tooling can check |
+Business verbs do not transfer as easily. `cancel-order`, `approve-loan` and
+`rotate-credentials` carry rules specific to their domains. RFC 8288 permits
+extension relation types identified by URIs, and Fielding explicitly allows
+domain-specific vocabulary. You can publish
+`https://example.com/rels/cancel-order`, give it a definition, and let clients
+learn it.
+
+The URI solves identity, not comprehension. A client still needs the relation's
+definition, a domain model or a description it can reason about. That is not a
+failure of RFC 8288; every protocol eventually rests on shared meaning. It does
+mean that replacing `cancelOrder` with a relation URI has not removed the
+semantic contract. It has changed how that contract is named and distributed.
+
+The comparison becomes more useful when stated without absolutes:
+
+| Interface style | Stable meaning lives in | Runtime representation can add |
 |---|---|---|
-| Hard-coded RPC | prose docs, client source | nothing |
-| Hypermedia + custom rels | prose docs, per relation | that a link is present |
-| Typed IDL | a schema the client compiles | types, at build time |
+| Generated RPC or OpenAPI client | operation description and client code | result data and errors |
+| Basic link-style hypermedia | media type, relation definition and prose | relation presence and target |
+| Form-oriented hypermedia | media type, relation definition and form rules | presence, target, method and current inputs |
 
-Basic link-style hypermedia moves the contract. It does not remove it. What it
-removes is the machine-readable part: you trade a schema a validator can enforce
-for a relation name a human has to look up. For a client that could not read a
-schema anyway, that trade was nearly free. Richer hypermedia formats do not make
-it at all, and Part IV returns to them.
+None is contract-free. The important difference is which parts tooling can
+check before deployment and which parts remain authoritative only at runtime.
 
-## The one class of links everybody follows
+At one end of that spectrum, the shared vocabulary is so small and settled that
+the runtime control feels effortless. That is why the most successful machine
+hypermedia example is also the least dramatic one.
 
-There is one exception, and it marks the boundary precisely.
+## The relation everybody follows
 
-Pagination.
+Pagination marks the easy end of the spectrum:
 
 ```json
 {
@@ -327,166 +305,71 @@ Pagination.
 }
 ```
 
-Nobody writes a comment above that loop explaining why they didn't hard-code
-page two. They fetch the href, append the items, repeat until `next` is absent,
-and never think about it again. The same team that would refuse on principle to
-follow a `cancel` link follows this one without noticing they made a decision.
+Clients follow `next` without treating the choice as an architectural
+commitment. The relation is broadly standardized, the target is deliberately
+opaque, and the decision rule is tiny: follow while present, stop when absent.
+No client has to weigh cancellation against a refund or understand a warehouse.
 
-They are right both times, and the reason is the whole boundary condition.
+That success is not an exception to explain away. It reveals the boundary:
 
-The relation is domain-generic. `next`, `prev`, `first`, `last` are the top row
-of the figure above: registered, meaning the same thing on every server that has
-ever existed, with the processing rule living in the specification rather than
-in your business. This is Fielding's condition genuinely satisfied, and one of
-the very few places where it is.
+> Runtime controls are easiest to reuse when their semantics are already shared
+> and choosing them requires little domain judgment.
 
-And there is no decision to make. HATEOAS's expensive claim is that the
-affordance *set* should be derived per response; here the set has size one,
-continue or stop. A boolean requires no comprehension. Compare `cancel`, where
-the client must weigh an operation against a goal before acting.
+Opaque continuation tokens, signed download links and server-selected upload
+targets often share that shape. Their invocation binding changes independently;
+their meaning does not.
 
-<figure class="diagram">
-<svg viewBox="0 0 620 184" role="img" aria-label="Four rows on the left, each naming a protocol and its continuation field: HAL with underscore links dot next dot href, MCP with nextCursor, Google AIP-158 with next_page_token, and Relay with pageInfo dot endCursor. Arrows from all four converge into a single filled block on the right reading: follow while present, stop when absent, never parse. A footer notes this is the only relation everybody actually follows.">
-  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ONE CONTROL, FOUR SPELLINGS</text>
-  <g font-family="var(--font-mono)" font-size="9">
-    <rect x="0" y="28" width="300" height="22" fill="none" stroke="var(--line)"/>
-    <text x="10" y="43" fill="var(--muted)">HAL</text>
-    <text x="100" y="43" fill="var(--ink)">_links.next.href</text>
-    <rect x="0" y="58" width="300" height="22" fill="none" stroke="var(--line)"/>
-    <text x="10" y="73" fill="var(--muted)">MCP</text>
-    <text x="100" y="73" fill="var(--ink)">nextCursor</text>
-    <rect x="0" y="88" width="300" height="22" fill="none" stroke="var(--line)"/>
-    <text x="10" y="103" fill="var(--muted)">AIP-158</text>
-    <text x="100" y="103" fill="var(--ink)">next_page_token</text>
-    <rect x="0" y="118" width="300" height="22" fill="none" stroke="var(--line)"/>
-    <text x="10" y="133" fill="var(--muted)">RELAY</text>
-    <text x="100" y="133" fill="var(--ink)">pageInfo.endCursor</text>
-  </g>
-  <g stroke="var(--signal)" fill="none">
-    <path d="M300 39 L350 39 L350 90"/>
-    <path d="M300 69 L350 69 L350 90"/>
-    <path d="M300 99 L350 99 L350 90"/>
-    <path d="M300 129 L350 129 L350 90"/>
-    <path d="M350 90 L374 90 M368 86 L374 90 L368 94"/>
-  </g>
-  <rect x="380" y="52" width="240" height="76" fill="var(--signal)"/>
-  <g font-family="var(--font-mono)" font-size="9" fill="var(--paper)" text-anchor="middle">
-    <text x="500" y="78">follow while present</text>
-    <text x="500" y="96">stop when absent</text>
-    <text x="500" y="114">never parse it</text>
-  </g>
-  <text x="0" y="172" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the only relation everybody actually follows</text>
-</svg>
-<figcaption>Stripe's <code>starting_after</code> and <code>has_more</code>, Kubernetes' <code>continue</code> token, and Elasticsearch's <code>search_after</code> are the same row again. Nobody copied anybody; the shape is forced by the problem.</figcaption>
-</figure>
+Domain transitions sit further along the same continuum. A `cancel` control can
+still be valuable, but not because it teaches cancellation. Its value comes
+from the facts that *do* vary at runtime: that cancellation is applicable here,
+that the server selected this target, and that some arguments may already be
+bound.
 
-So the generalization is not "links are useless." It is narrower and more
-useful:
+We can now state the whole result of the browser example. Meaning must be shared;
+applicability and binding need not be compiled. The remaining question is
+whether learning those two facts at runtime costs less than the coupling it
+removes.
 
-> Following a link is cheap exactly when following it requires almost no
-> understanding of what it means.
+## From distinction to price
 
-`next` clears that bar completely. `cancel` cannot clear it at all. Everything
-in this series is downstream of which side of that line an affordance falls on.
+The distinction creates a temporal trade. A stable operation description is
+cheap to compile, validate, cache and monitor. A contextual control is current
+and authoritative,
+but has to be read, interpreted and revalidated at runtime. If applicability or
+invocation changes independently of client releases, that price can be worth
+paying. If neither changes, the control may be ceremony around a method the
+client already knows.
 
-## What actually failed
-
-So the failure is narrower than it usually gets stated. HATEOAS did not fail
-because links are hard to parse; JSON parsers are excellent. It failed because a
-static program cannot discover a new business concept merely because the server
-gave that concept a URL, and giving concepts URLs was the mechanism on offer.
-The semantics did not disappear when the reader did. They moved into the
-client's source, compiled once into `cancelOrder(orderId)` by a developer who
-read the documentation, and that is why a link named `cancel` never saved
-anybody very much.
-
-On its own that is only half the indictment, because it can be answered.
-Hypermedia's defenders have answered it the same way for twenty years: the
-clients are too stupid. Give me a client that can read an unfamiliar affordance
-and choose the transition that serves its goal, and the constraint works as
-advertised.
-
-Fine. Grant it. A payments team that understands refunds perfectly, has read the
-documentation, and knows precisely what every relation means still does not
-follow the links. That happens for reasons that have nothing to do with
-understanding, and it is the half of the case nobody writes down: round trips,
-pipelines that cannot fail on a change nobody declared, and the fact that a URL
-handed to you at runtime is not a thing you can put on a dashboard. The bill
-comes due in operations, and it is itemized in Part II.
+[Part II](/articles/hateoas-priced-the-wrong-change/) puts both sides of that
+ledger on the same page. It starts with an API that publishes both links and a
+schema, follows the consequences into latency, compatibility and operations,
+and ends with MCP — a useful counterexample showing that runtime discovery does
+not have to make the operation vocabulary depend on application state.
 
 ## References
 
-**The constraint**
-
 1. Roy T. Fielding, *Architectural Styles and the Design of Network-based
    Software Architectures*, University of California, Irvine, 2000 — chapter 5,
-   the four interface constraints, the uniform-interface trade-off in 5.1.5,
-   and control state concentrated in representations in 5.3.3.
+   the uniform-interface constraints, client-chosen transitions, and the
+   efficiency trade-off of a uniform interface.
    https://ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm
 
-2. Roy T. Fielding, “REST APIs must be hypertext-driven,” 2008 — fixed resource
-   names, descriptive effort in the media type, no prior knowledge beyond the
-   initial URI, no typed resources, and out-of-band information as the failure
-   mode.
+2. Roy T. Fielding, “REST APIs must be hypertext-driven,” 2008 — initial URIs,
+   media types, relation names, in-band controls, and the explicit acknowledgement
+   that clients always need shared vocabulary.
    https://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven
 
-3. Martin Fowler, “Richardson Maturity Model,” 2010 — the levels, and why level
-   3 stayed rare.
-   https://martinfowler.com/articles/richardsonMaturityModel.html
-
-**The missing component**
-
-4. Carson Gross, “HATEOAS is for Humans,” 2016 — agency as the missing
-   ingredient, the browser as a generic client, and the argument that the
-   constraint is largely wasted on machines.
+3. Carson Gross, “HATEOAS is for Humans,” 2016 — the browser, agency and the
+   human component of a uniform client.
    https://intercoolerjs.org/2016/05/08/hatoeas-is-for-humans.html
 
-5. Carson Gross, “Hypermedia Clients” — what a uniform client actually is, and
-   why adding links to JSON does not produce one.
+4. Carson Gross, “Hypermedia Clients” — why generic mechanics do not supply
+   domain purpose, and why a link-only JSON format is not a complete client
+   protocol.
    https://four.htmx.org/essays/hypermedia-clients
 
-6. Carson Gross, Adam Stepinski, Deniz Akşimşek, *Hypermedia Systems* — the
-   modern case for the constraint, on the surface where a human is reading.
-   https://hypermedia.systems/
-
-**The vocabulary**
-
-7. RFC 8288, *Web Linking* — link relation types, and the rule that extension
-   relation types are URIs.
+5. RFC 8288, *Web Linking* — registered and extension relation types.
    https://www.rfc-editor.org/rfc/rfc8288
 
-8. IANA Link Relations registry — the registered vocabulary, including
-   `payment`, and the absence of any domain verb resembling `cancel` or
-   `refund`.
+6. IANA Link Relations registry — the standardized relation vocabulary.
    https://www.iana.org/assignments/link-relations/link-relations.xhtml
-
-9. JSON Hypertext Application Language (HAL) — the `_links` convention the
-   examples follow.
-   https://www.ietf.org/archive/id/draft-kelly-json-hal-11.html
-
-**Pagination**
-
-10. Google API Improvement Proposal 158, *Pagination* — `page_size`,
-    `page_token`, `next_page_token`.
-    https://google.aip.dev/158
-
-11. Model Context Protocol, *Pagination* — the opaque cursor model, `cursor`
-    and `nextCursor`, and the MUST-treat-as-opaque client rules.
-    https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/pagination
-
-12. GraphQL Cursor Connections Specification — `edges`, `cursor`, and
-    `pageInfo` with `hasNextPage` and `endCursor`.
-    https://relay.dev/graphql/connections.htm
-
-13. Stripe API reference, *Pagination* — `starting_after`, `ending_before`,
-    `has_more`.
-    https://docs.stripe.com/api/pagination
-
-**The ideas**
-
-14. John Ousterhout, *A Philosophy of Software Design*, Second Edition. Yaknyam
-    Press, 2021.
-    https://web.stanford.edu/~ouster/cgi-bin/book.php
-
-15. Fabio Ellena, “Who Pays for the Pressure,” 2026.
-    https://fblln.github.io/articles/who-pays-for-the-pressure/

@@ -1,44 +1,41 @@
 +++
-title = "HATEOAS Priced the Wrong Change"
+title = "What Runtime Affordances Cost — and Buy"
 date = "2026-08-14"
-description = "GitHub emits URI templates in every payload and generates its own SDK from an OpenAPI document instead of following them. That is not ignorance of hypermedia — it is a team declining a trade nobody ever wrote down. Traversal costs a round trip before the first useful call, a build-time contract your pipeline can fail on, an operation name your dashboard can group by, and a method your retry logic can trust. And the change it insures you against — the server moving its URLs — is the one change mature APIs almost never make. Second of four on hypermedia and agents."
+description = "Runtime controls keep the server authoritative about current transitions and invocation targets, but they move work from build time into execution. The relevant question is not whether HATEOAS won: it is whether applicability and binding change often enough to justify traversal, dynamic failure, and weaker static closure. Second of three on hypermedia and agents."
 tags = ["API Design", "Protocols", "Architecture", "Complexity"]
 +++
 
-*Second of four. [Part I](/articles/the-browser-was-never-the-smart-client/)
-argued that a program cannot learn a business concept from the fact that the
-server gave that concept a URL. This part grants the opposite, a team that
-understands the domain perfectly, and asks why they still do not follow the
-links.*
+*Second of three. [Part I](/articles/the-browser-was-never-the-smart-client/)
+separated operation semantics, current applicability and invocation binding.*
 
-GitHub's REST API is one of the most genuinely hypermedia-flavoured public APIs
-anybody has shipped. Open any payload and it is full of affordances: `url`,
-`html_url`, `commits_url`, `comments_url`, dozens of sibling URI templates,
-emitted on every response, for years, at enormous scale.
+That distinction creates a temporal trade: compile stable knowledge once, or
+discover current knowledge when it is needed. GitHub is a useful place to see
+both choices operating in the same API.
 
-GitHub's own documentation states that it "uses the OpenAPI description to
-generate the Octokit SDKs."
+GitHub's REST API is full of URLs: repositories point to commits, comments,
+issues, assignees and archives, often through URI templates. GitHub also
+publishes an OpenAPI description and uses it to generate the Octokit SDKs.
 
-The publisher of the links does not consume its own links. Neither does anybody
-else. And GitHub cannot be accused of not understanding hypermedia; they
-implemented it more thoroughly than the people arguing for it usually do.
+That coexistence is more interesting than either side admitting defeat. The
+URLs are useful identifiers and navigation targets. The schema is useful as a
+stable description from which a typed operation surface can be compiled. A
+single API can publish both because they answer different questions.
 
-Even when the client author understands the domain completely, has read every
-page of the documentation, and knows exactly what every relation in the response
-means, they still compile the routes in. That decision has nothing to do with
-comprehension, and in fifteen years of watching teams make it I have never seen
-the reasons written down. They are transmitted as a shrug.
+It is tempting to turn GitHub into a verdict: even the publisher of all those
+links chose generated methods, therefore traversal failed. The evidence does not
+carry that much weight. URL fields are not necessarily typed state-transition
+controls; an SDK does not prove that no consumer follows them; and a public API
+with a stable route structure is one deployment, not the definition of all
+distributed systems.
 
-So I am going to write them down.
+What GitHub does provide is a good place to ask the right question. If a client
+can learn an operation from a description before execution or from a control
+during execution, what changes when the information moves?
 
-## The graph was kept. It moved.
+## The graph can live in two places
 
-First, dispose of the comfortable explanation: hypermedia is fine and the
-tooling never caught up.
-
-OpenAPI has carried a Link Object since 3.0. A response can declare a link
-naming the next operation by `operationId`, with a `parameters` map pulling its
-arguments straight out of the current response body via runtime expressions:
+OpenAPI has carried a Link Object since 3.0. A response can declare that one
+operation leads to another and bind parameters out of the preceding response:
 
 ```yaml
 responses:
@@ -50,327 +47,425 @@ responses:
           orderId: $response.body#/id
 ```
 
-That is HATEOAS's shape, expressed in a schema: the relationship, the target
-operation, and where its arguments come from, all machine-readable and available
-since 2017.
+That is a description of a possible relationship between operations. It lives
+in an artifact a generator, validator or compatibility checker can inspect. It
+does not necessarily assert that cancellation is available for every order
+returned by this response, and the link information does not have to appear in
+the response instance.
 
-Where it lives is the whole article in one sentence, and Swagger's own
-documentation states it outright. The concept "is somewhat similar to
-hypermedia, but OpenAPI links do not require the link information present in the
-actual responses." The graph was kept. It moved into the description, where a
-client can compile it, and out of the payload, where a client would have to
-traverse it. Nobody was missing the mechanism. They had it and put it somewhere
-else on purpose.
+A runtime control makes a different assertion:
 
-## What a link actually saves
-
-Be fair to the link before charging it for anything. It saves you interpolating
-an identifier into a path template, and it means the server can restructure its
-URL space without breaking you. That decoupling claim is real.
-
-A third thing is usually counted as a saving and is a cost in disguise: it makes
-every affordance conditional. `_links` is an open map, `cancel` may or may not be
-in it, and a client that reads it must branch. Against a client that knows
-`cancelOrder` exists and asks the server whether it applies, that is the same
-check with worse ergonomics and no type behind it, a nullable lookup on every
-response instead of a field a generator turned into an enum.
-
-Now the other column.
-
-| What a link saves | What following one costs |
-|---|---|
-| interpolating an id into a path template | a nullable field to check on every response |
-| the server moving its URL space | a round trip before the first useful call |
-| — | no build-time surface, so no CI gate |
-| — | a URL, where telemetry needs a route |
-| — | no method, so retries cannot be safe |
-
-The decoupling argument compares the left column against hard-coded URLs and
-stops there. The right column is what a team actually weighs, which is why the
-decision looks like laziness from the outside and like obviousness from the
-inside. The first cost is the one just described. The other four are the rest of
-this section.
-
-## Four line items
-
-**You have to arrive before you can act.** A typed client cancels an order in
-one request:
-
-```ts
-await api.cancelOrder({ orderId, reason });
+```json
+{
+  "id": "123",
+  "_links": {
+    "cancel": { "href": "/orders/123/cancel" }
+  }
+}
 ```
 
-A conforming hypermedia client cannot, and this is not an implementation detail.
-It is the constraint working exactly as specified. Entry with no prior knowledge
-beyond the initial URI, Fielding's own criterion, means the path to any
-operation is discovered by walking there:
+Its presence says something about this representation. In a sufficiently rich
+media type it can also carry a method, input fields and content type. Ship the
+order and the control can disappear without changing the class-level definition
+of cancellation.
+
+The design-time graph says what transitions the interface knows about. The
+runtime graph says which transitions the server is offering here. Treating them
+as substitutes hides the most useful information in each.
+
+## What runtime binding buys
+
+A server-provided control can carry at least four kinds of late-bound knowledge.
+
+**Current applicability.** The server can derive the offered controls from
+resource state, authorization, policy, inventory or any other fact it owns. A
+client no longer has to reconstruct all of those predicates from response
+fields. Absence may still be ambiguous — unauthorized, temporarily unavailable
+and conceptually inapplicable are not the same — but presence is a useful
+positive statement.
+
+**An opaque target.** The client need not know how an identifier maps into a
+path. More importantly, the target can encode a continuation, select a region,
+route to an owning service, include a signature, or point at a temporary upload
+location. Cosmetic route renaming is the least interesting version of this
+benefit.
+
+**Bound arguments.** The server can supply the order identifier, version token,
+workflow handle or other values it already knows. The client provides only what
+remains open. HTML forms have always done this with hidden fields; machine
+formats can do the same without pretending the bound values are user input.
+
+**Independent evolution of flow.** A server can insert a confirmation,
+redirect a transition, or change the route through a workflow without asking
+every client to reconstruct the path. This helps only if clients understand the
+controls involved. Hypermedia can rearrange known concepts more readily than it
+can introduce unknown ones.
+
+These benefits share a condition: the late-bound fact must actually vary. If
+every client release and server release move together, every order uses the
+same target, and applicability is already required as a field, compiling the
+operation may be simpler.
+
+That is the benefit column. The cost column begins with the same condition in
+reverse: a fact discovered at runtime has to be fetched, interpreted and
+handled as uncertain even on days when it did not change.
+
+## What runtime binding costs
+
+The corresponding bill is real, but it is conditional rather than universal.
+
+| Cost | When it appears | What can reduce it |
+|---|---|---|
+| Additional reads | the client does not already hold a fresh representation containing the control | bookmarks, events, caches, embedding controls in data already required |
+| Weaker static closure | valid transitions depend on state that cannot be enumerated completely at build time | schemas for operation shape, compatibility checks for media types, contract tests |
+| Runtime branching and failure | controls may be absent, stale or unfamiliar | explicit reason codes, version tokens, revalidation, fallback policy |
+| Batch friction | applicability is exposed only one resource at a time | collection controls, bulk resources, query resources, job APIs |
+
+None of those rows means a conforming client must walk from `/` before every
+action. REST starts with an initial URI, but clients can retain identifiers,
+receive links in events, cache safe responses and begin later work from a known
+resource. The unavoidable part is smaller: before relying on a contextual
+affordance, the client needs a sufficiently current statement that the
+affordance exists.
+
+Sometimes that read is pure overhead. A command processor receiving an order ID
+solely to cancel it may prefer one `cancelOrder` call and let the server reject
+an invalid transition. Sometimes the read was needed anyway. A support agent
+deciding between an address change, cancellation and refund needs the current
+order before it can make a sensible choice; controls can arrive with data it was
+already going to fetch.
+
+The same distinction matters for batch work. Per-resource controls can be an
+awful interface to a reconciliation job over forty thousand records. That does
+not imply that hypermedia forbids bulk operations. A collection can expose a
+bulk transition, a query can select eligible resources, and a job resource can
+represent asynchronous progress. It means only that an API exposing
+applicability *solely* inside individual representations has optimized for a
+different access pattern.
+
+### The same operation in three workloads
+
+Consider three callers that all need cancellation.
+
+A queue consumer receives an explicit command:
 
 ```text
-GET  /                     → find the orders link
-GET  /orders               → find the templated item link
-GET  /orders/123           → is there a "cancel" in _links?
-POST /orders/123/cancel    → finally, the thing you came to do
+Cancel order 123 because the payment expired.
 ```
 
-Three requests to learn what one method signature already encoded. Caching
-flattens the walk on repeat passes and does nothing for the first, and cold
-paths are exactly the ones that turn up in a p99. Fielding scoped this honestly
-himself: a uniform interface "degrades efficiency, since information is
-transferred in a standardized form rather than one which is specific to an
-application's needs."
+It already knows its goal, the order and the reason. Fetching an order solely to
+discover a control adds latency without improving the decision. The efficient
+shape is one command with an idempotency key or version precondition, followed
+by a structured rejection if cancellation is no longer legal.
 
-And machine-to-machine work is disproportionately batch. A person cancels one
-order; a reconciliation job touches forty thousand. Think time hides the walk in
-the interactive case, and the row count multiplies it in the batch one.
+A support agent receives a different problem:
 
-There is no bulk form of the question either, because the affordance set is
-per-resource *by design*. You cannot ask which of forty thousand orders are
-currently cancellable in one call; the answer lives distributed across forty
-thousand representations. The obvious fix is a bulk endpoint returning states,
-at which point you have stopped traversing and gone back to calling a named
-operation with a schema.
+```text
+The customer wants the package sent to a different address.
+```
 
-**Nothing in your pipeline can fail.** This is the big one, and it is almost
-never mentioned in the argument. The reason teams love OpenAPI and Protobuf is
-not the generated client. It is that a breaking change fails a build.
+Now cancellation is only one candidate among address change, replacement,
+refund and “do nothing.” The agent needs current order state before choosing.
+If that representation also carries the applicable operations, the affordance
+cost is almost free and may prevent a wrong branch.
 
-`oasdiff` diffs two OpenAPI documents, classifies what broke, and runs as a
-GitHub Action on the pull request. The artifact is the thing that makes that
-possible: two versions of a file, a machine that can tell you what changed
-between them, and a red build when the answer is "something a caller depended
-on."
+A reconciliation job has a third shape:
 
-Now ask what the equivalent is for a hypermedia API. The contract is the media
-type. There is no artifact to diff, no document to version, no schema for a CI
-job to fail on. A relation quietly disappearing from a response, the precise
-thing the design says should happen freely, is indistinguishable from a bug, at
-runtime, in production, to a client that has no way to have asserted otherwise.
-The evolution story is real; the safety net under it is not.
+```text
+Find every expired unpaid order and cancel it before midnight.
+```
 
-**The dashboard needs a name.** This one is settled by a standard rather than by
-taste. The OpenTelemetry HTTP semantic conventions say a span name should be
-`{method} {target}` where a *low-cardinality* target is available, and then
-prohibit the obvious shortcut: "Instrumentation MUST NOT default to using URI
-path as a `{target}`." If the framework cannot supply the matched route
-template, the convention says leave the attribute empty rather than substitute
-the path, because "the URI path can NOT substitute it."
+Neither forty thousand individual reads nor forty thousand operation schemas is
+the right abstraction. The API needs a collection query and probably an
+asynchronous bulk job with its own controls. Calling that “less RESTful” would
+confuse a resource model with an access pattern.
 
-<figure class="diagram">
-<svg viewBox="0 0 620 194" role="img" aria-label="Two telemetry views. On the left, a single low-cardinality span name POST slash orders slash braces id slash cancel with an aggregate count of 41,209 and a p99, labelled one row you can alert on. On the right, four distinct span names for individual order URLs each with a count of one, trailing off, labelled no row at all.">
-  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
-    <text x="0" y="12">COMPILED ROUTE</text>
-    <text x="330" y="12">FOLLOWED HREF</text>
-  </g>
-  <g font-family="var(--font-mono)" font-size="9">
-    <rect x="0" y="22" width="290" height="46" fill="var(--signal)"/>
-    <text x="12" y="40" fill="var(--paper)">POST /orders/{id}/cancel</text>
-    <text x="12" y="58" fill="var(--paper)">n=41209   p99=180ms   err=0.4%</text>
-    <rect x="330" y="22" width="290" height="22" fill="none" stroke="var(--line)"/>
-    <text x="342" y="37" fill="var(--ink)">POST /orders/8f21/cancel   n=1</text>
-    <rect x="330" y="48" width="290" height="22" fill="none" stroke="var(--line)"/>
-    <text x="342" y="63" fill="var(--ink)">POST /orders/a034/cancel   n=1</text>
-    <rect x="330" y="74" width="290" height="22" fill="none" stroke="var(--line)"/>
-    <text x="342" y="89" fill="var(--ink)">POST /orders/c7de/cancel   n=1</text>
-    <rect x="330" y="100" width="290" height="22" fill="none" stroke="var(--line)"/>
-    <text x="342" y="115" fill="var(--ink)">POST /orders/1b90/cancel   n=1</text>
-    <text x="342" y="139" fill="var(--muted)">… 41,205 more</text>
-  </g>
-  <path d="M0 164 L620 164" stroke="var(--line)" fill="none"/>
-  <text x="0" y="184" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">one row you can alert on</text>
-  <text x="620" y="184" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="end">no row at all</text>
-</svg>
-<figcaption>A client that compiled the route knows the operation's identity and can label the span with it. A client that followed an href it was handed has a URL and nothing else. The operation is the thing traversal declines to name.</figcaption>
-</figure>
+The architecture should follow the workload. Runtime affordances are not a tax
+every caller must pay in the same way, and a command endpoint is not evidence
+that contextual controls never earn their keep.
 
-That is a specification, written by people with no stake in the REST argument,
-stating that the URL is not an adequate identity for an operation. And the
-operation is the unit of everything ops cares about: the SLO, the rate limit,
-the error budget, the capacity plan, the thing the incident review names.
+Workload determines how often the runtime bill is paid. The representation
+model determines how much assurance can be bought before any workload begins.
 
-**Retry is a property of the method, and the link does not carry one.** RFC 9110
-defines an idempotent method as one where "the intended effect on the server of
-multiple identical requests with that method is the same as the effect for a
-single such request," which is what licenses a client to retry automatically
-after a connection failure. Which method is behind `_links.cancel.href`? Basic
-HAL does not say, an omission Carson Gross names directly. So the client either
-guesses or hard-codes a mapping from relation name to verb, which is the
-hard-coding it was supposed to avoid, relocated and typed worse.
+## Static assurance does not disappear, but it changes scope
 
-## It priced the wrong change
+Typed descriptions earn their place before the first request. A pipeline can
+diff two OpenAPI documents, detect a removed required field, regenerate a
+client, and fail a build. A relation that conditionally disappears from one
+resource cannot be classified the same way, because disappearance may be the
+application behaving correctly.
 
-Hypermedia's insurance policy covers one specific event: the server restructures
-its URL space. Ask how often mature APIs actually do that.
+That is not the same as saying a hypermedia API has no artifact to test. Media
+types can be versioned and described by schemas. Relation vocabularies can have
+compatibility rules. Producers and consumers can run contract tests. Rich forms
+can validate request shapes. What static tooling cannot prove is the complete
+set of controls that will be present for every future resource state — and that
+incompleteness is the mechanism, not an accidental tooling gap.
 
-Stripe is the useful case because it evolves aggressively and documents its
-rules. It versions by date, `2026-07-29.dahlia` at the time of writing, selected
-with a `Stripe-Version` header. And its published list of what counts as
-backwards-compatible is entirely about *payloads and parameters*: new resources,
-new optional request parameters, new response properties, reordered properties,
-changed opaque-string formats, new event types.
+The clean division is:
 
-Nothing in that list is about URLs. They have been stable for over a decade,
-across an enormous amount of change, because moving them would break every
-integration on earth for no product benefit whatsoever.
+- Use static artifacts to check stable operation semantics and representation
+  structure.
+- Use runtime representations to report contextual applicability and binding.
+- Validate state and authorization again when the operation executes.
 
-<figure class="diagram">
-<svg viewBox="0 0 620 214" role="img" aria-label="A decade-long timeline from 2016 to 2026 with two lanes drawn against the same axis. The upper lane, what actually changes, is ruled with a tick mark for every dated release across the whole decade: fields, optional parameters, resources, behaviour, error cases, deprecations. The lower lane, what hypermedia insures against, is the same width and completely empty, annotated that the URL space has not moved once. A footer notes the premium is paid on every call and the claim has never been filed.">
-  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">STRIPE &middot; ONE DECADE, TO SCALE</text>
-  <text x="0" y="38" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">WHAT ACTUALLY CHANGES</text>
-  <rect x="0" y="44" width="620" height="28" fill="none" stroke="var(--line)"/>
-  <path d="M6 44 L6 72 M18 44 L18 72 M30 44 L30 72 M42 44 L42 72 M54 44 L54 72 M66 44 L66 72 M78 44 L78 72 M90 44 L90 72 M102 44 L102 72 M114 44 L114 72 M126 44 L126 72 M138 44 L138 72 M150 44 L150 72 M162 44 L162 72 M174 44 L174 72 M186 44 L186 72 M198 44 L198 72 M210 44 L210 72 M222 44 L222 72 M234 44 L234 72 M246 44 L246 72 M258 44 L258 72 M270 44 L270 72 M282 44 L282 72 M294 44 L294 72 M306 44 L306 72 M318 44 L318 72 M330 44 L330 72 M342 44 L342 72 M354 44 L354 72 M366 44 L366 72 M378 44 L378 72 M390 44 L390 72 M402 44 L402 72 M414 44 L414 72 M426 44 L426 72 M438 44 L438 72 M450 44 L450 72 M462 44 L462 72 M474 44 L474 72 M486 44 L486 72 M498 44 L498 72 M510 44 L510 72 M522 44 L522 72 M534 44 L534 72 M546 44 L546 72 M558 44 L558 72 M570 44 L570 72 M582 44 L582 72 M594 44 L594 72 M606 44 L606 72 M618 44 L618 72" stroke="var(--signal)" fill="none"/>
-  <text x="0" y="88" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">fields &middot; optional parameters &middot; resources &middot; behaviour &middot; error cases &middot; deprecations</text>
-  <text x="0" y="118" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">WHAT HYPERMEDIA INSURES AGAINST</text>
-  <rect x="0" y="124" width="620" height="28" fill="none" stroke="var(--line)"/>
-  <text x="310" y="142" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">&mdash; the URL space has not moved &mdash;</text>
-  <path d="M0 168 L620 168" stroke="var(--line)" fill="none"/>
-  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
-    <text x="0" y="182">2016</text>
-    <text x="130" y="182" text-anchor="middle">2018</text>
-    <text x="254" y="182" text-anchor="middle">2020</text>
-    <text x="378" y="182" text-anchor="middle">2022</text>
-    <text x="502" y="182" text-anchor="middle">2024</text>
-    <text x="620" y="182" text-anchor="end">2026</text>
-  </g>
-  <text x="0" y="206" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the premium is paid on every call; the claim has never been filed</text>
-</svg>
-<figcaption>Both lanes span the same decade at the same scale. An API under real evolutionary pressure changes its fields, its behaviour and its error surface on every dated release, and its URL space on none of them. Hypermedia decouples the client from the empty lane.</figcaption>
-</figure>
+Trying to force the second row into a closed build-time enum duplicates a state
+machine. Refusing a schema for the first row gives up useful assurance for no
+corresponding gain.
 
-So the trade, as I read it: pay a round trip, a missing CI gate, an unnameable
-span and an unknown method on every single call, to be insulated from a change
-that happens roughly never.
+Compatibility is only one reason stable operation identity matters. Production
+systems also need to aggregate, retry and govern calls after deployment.
 
-And stay fully exposed to the changes that happen every sprint, because a link
-says nothing about a renamed field, a narrowed enum, a new required parameter or
-an altered side effect.
+## Operations need identities, not necessarily routes
 
-This is the same failure I described in
-[who pays for the pressure](/articles/who-pays-for-the-pressure/), inverted.
-There, real pressure inside an implementation got relocated onto the contract.
-Here, a contract cost is paid continuously to hedge a pressure that was never
-going to arrive. Teams feel the second one immediately and cannot articulate it,
-which is why the argument keeps being lost on paper and won in practice.
+Monitoring and retry policy are sometimes presented as fatal problems for
+followed links. They are better understood as requirements on the control.
 
-None of this makes hypermedia's design incoherent. It makes it *tuned for a
-different deployment*: many independent clients that cannot be upgraded
-together, a document-shaped domain, and a consumer that needs no build-time
-contract because it has no build. The Web. Feeds. Crawlers. `sitemap.xml`. Those
-clients pay none of the four line items above, which is precisely why they
-follow links happily.
+OpenTelemetry discourages raw URI paths as low-cardinality span names. That does
+not mean only compiled clients can be observed. The server still knows its
+matched route; a client may know a URI template; and application instrumentation
+can name a span by a stable relation or operation identifier. A bare `href`
+offers less help than a described operation, but traversal does not make the
+request intrinsically anonymous.
 
-An internal payments service is not that deployment. Neither is a build system,
-nor a warehouse integration, nor anything with an on-call rotation attached.
+Retry has the same shape. Basic HAL does not say which method submits a domain
+transition. A form-oriented control does. Even then, `POST` alone cannot tell a
+client whether repeating `cancelOrder` is safe after an ambiguous failure.
+Idempotency keys, conditional requests, method semantics and domain policy still
+matter. The valid criticism is that a useful machine control must carry or
+reference this metadata, not that no hypermedia control can.
 
-## The tenth that everybody kept
+This is why link-only formats are a weak target for the larger architectural
+argument. They make invocation dynamic while leaving too much of the operation
+in prose. A richer control can carry or reference the missing identity and
+method metadata. Whether that additional machinery is worth deploying depends
+on the kind of change it protects the client from.
 
-What teams kept is small, and the rest of this series is built on it.
+## Which change are you insuring against?
 
-Hard-code the operations; read their *validity* off the response. An order
-carrying `"status": "pending"`, or better, an explicit
-`"allowedActions": ["cancel", "refund"]`, tells the client which of the
-operations it already understands are legal right now, and it does so as a
-field. A schema can express it. A generator can turn it into an enum. A pipeline
-can fail when it changes. A span can still be named.
+The original sales pitch for hypermedia often concentrates on route freedom:
+clients follow server-provided targets, so the server may reorganize its URI
+space. Mature public APIs make that particular claim look overpriced. Stripe,
+for example, evolves aggressively through dated versions while treating stable
+routes as part of the integration surface. Its documented compatible changes
+are dominated by payloads, optional parameters, resources, event types and
+opaque values — the places product evolution actually applies pressure.
 
-That keeps the server as the authority on current availability and drops the
-claim that the client should learn the operation's identity and invocation by
-traversal. Those two ideas arrived bundled, and almost every argument about
-HATEOAS is really an argument about the second conducted in the vocabulary of
-the first. Nobody is defying Fielding. They are declining one clause of him and
-keeping the rest.
+That observation is useful, but the conclusion must remain scoped. It shows
+that route relocation is not the main risk in a Stripe-shaped API. It does not
+show that all invocation binding is stable. A server-selected target may carry
+more than a prettier path:
 
-## What a smarter client does not fix
+- an upload location can be signed and short-lived;
+- a continuation can encode partition position the client must not parse;
+- a device can be routed to the region that currently owns it;
+- a workflow can insert approval or confirmation without changing the business
+  name of the final operation;
+- a capability URL can intentionally combine an address with delegated access.
 
-This is where the two bills separate.
+The last case is a security design, not a property of URLs in general. Most
+links are names, not permissions. The point is that “the server might rename
+`/orders`” is the weakest version of late binding, and measuring the whole idea
+against that one event understates the claim.
 
-Part I's charge is answerable in principle. Build a client smart enough to read
-an unfamiliar affordance and reason about it, and that charge is dropped.
+The economic test is frequency multiplied by consequence. How often does the
+binding change independently of the client? How damaging is a stale binding?
+How much does discovering it cost? A decade of stable routes pushes toward
+compiled clients. Per-request signatures or ownership routing push the other
+way. State-specific applicability may change on every representation even when
+the route never moves at all.
 
-Not one of the four line items above is dropped with it. Intelligence buys
-understanding, and every bill in this article is an operational bill.
+This also explains why a hybrid is not a compromise for its own sake. It lets
+the stable route-shaped part remain compiled while retaining only the
+late-bound facts that have demonstrated a reason to be late-bound.
 
-So when somebody finally sat down to design a protocol for the smartest clients
-we have ever deployed, the interesting question is not whether they had heard of
-hypermedia. It is which of these two bills they were looking at.
+MCP sharpens that separation because it was designed for clients that really can
+discover and interpret operations at runtime, yet still makes the operation
+catalog deliberately stable.
 
-They were looking at both, and the choices they made (a stable named vocabulary,
-schemas a client can validate against, a surface deliberately prevented from
-shifting under the caller) read very differently once you know what the second
-bill costs.
+## MCP chose a different kind of runtime discovery
 
-That is Part III.
+The Model Context Protocol is useful here, but not as a referendum on REST. MCP
+is an agent-tool protocol, while HATEOAS is an architectural constraint on how
+an application represents transitions. One can be layered on the other.
+
+MCP nevertheless demonstrates something important: runtime discovery does not
+require the operation vocabulary to be derived from application state.
+`tools/list` returns named callables with descriptions and JSON Schemas;
+`tools/call` invokes one by name. A client can meet a server at runtime, learn
+its vocabulary, and still receive a catalog stable enough to validate and
+cache.
+
+MCP also exposes resources, but keeps them deliberately separate from tools.
+`resources/read` returns identified content. It does not make the resource a
+container of transitions. The conceptual split is stark:
+
+| Channel | Unit | Answers |
+|---|---|---|
+| `tools/list` | described callable | what operations this server exposes |
+| `tools/call` | name plus arguments | invoke one operation |
+| `resources/read` | URI-identified content | retrieve some current data |
+
+This is not “static API versus discovery.” Both sides discover at runtime. The
+difference is whether the vocabulary is a property of the server or a property
+of the client's current position in a resource graph.
+
+The 2026-07-28 specification makes that separation normative. The tool set may
+change over time and may differ according to authorization presented on a
+request, but it must not vary per connection or as a side effect of earlier
+requests on that connection. Deterministic ordering is recommended partly to
+improve caching and prompt-cache hit rates.
+
+That cache concern is unusually important for language models. Tool names,
+descriptions and schemas are often serialized into model context. A stable,
+deterministically ordered prefix can be reused; a tool surface that changes
+after every action can invalidate that prefix. The 2026 revision reinforces the
+choice with cache hints on list results. Hypermedia normally optimizes network
+representations. MCP also has to optimize the prompt assembled from them.
+
+The stateless core makes the same choice about ongoing work. If a server needs
+state across calls, the guidance is to return an explicit handle and accept it
+as an argument later:
+
+```text
+create_basket()             → basket_id = bsk_a1b2c3
+add_item(bsk_a1b2c3, item)  → updated basket
+checkout(bsk_a1b2c3)        → receipt
+```
+
+The handle lets the model carry identity from one call to the next. It still
+does not say which of `add_item`, `checkout` or `abandon_basket` applies to this
+basket now. State has become visible data while the operation catalog remains
+global.
+
+This is not HATEOAS failing an agent test. MCP was optimized for named tool
+invocation, interoperability with existing function-calling systems, stateless
+deployment and model context. Its adoption does not isolate any one of those
+causes. It is evidence for a narrower proposition:
+
+> Capability discovery and state-dependent affordance discovery are independent
+> design choices.
+
+MCP keeps the first and generally leaves the second to ordinary data or errors.
+A tool list can say:
+
+```text
+cancel_order exists, means this, and accepts these arguments
+```
+
+It does not, by itself, say:
+
+```text
+this caller may cancel order 123 in its current state
+```
+
+An agent can infer that from fields, call and interpret an error, or use a
+separate applicability mechanism. The tool schema is excellent at operation
+identity and input shape. It is not a current statement about every resource to
+which the operation might apply.
+
+Put beside hypermedia, MCP completes the ledger. One design keeps the vocabulary
+stable and makes applicability the client's problem. The other can make
+applicability explicit but may repeat or rediscover the vocabulary. Which
+pressure dominates depends on the deployment.
+
+## Put the choices on one ledger
+
+The choice is not between modern schemas and obsolete links. It depends on the
+deployment.
+
+Runtime affordances become more valuable when:
+
+- clients and servers are released independently;
+- workflows or targets change without changing business semantics;
+- authorization and state strongly affect which transitions apply;
+- clients already need a fresh representation to decide what to do;
+- targets are opaque, temporary, signed or server-selected;
+- many heterogeneous consumers share a stable media type or vocabulary.
+
+Stable described operations become more valuable when:
+
+- callers are batch-oriented or latency-sensitive;
+- the operation set and routing are stable;
+- clients and servers can coordinate releases;
+- build-time compatibility gates prevent expensive incidents;
+- callers already know exactly which command they intend to issue;
+- the operation catalog is small enough to enumerate cheaply.
+
+Many systems occupy both columns. A generated client can know that
+`cancelOrder` exists while an order representation states whether it applies
+now and binds the current order ID. That design does not require the tool list
+to mutate, nor does it require the client to reverse-engineer eligibility from a
+status enum.
+
+[Part III](/articles/stable-verbs-dynamic-affordances/) gives that split a
+concrete shape. It uses one rich hypermedia format, HAL-FORMS, to show what
+contextual controls can carry, then asks whether a stable operation catalog and
+a dynamic affordance layer perform better together than either does alone.
 
 ## References
 
-**The publisher of the links**
+**Descriptions and runtime links**
 
-1. GitHub, *About the OpenAPI description for the REST API* — “GitHub uses the
-   OpenAPI description to generate the Octokit SDKs.”
+1. GitHub, *About the OpenAPI description for the REST API* — GitHub's OpenAPI
+   description and generated Octokit SDKs.
    https://docs.github.com/en/rest/about-the-rest-api/about-the-openapi-description-for-the-rest-api
 
 2. GitHub REST API description repository.
    https://github.com/github/rest-api-description
 
-3. OpenAPI Specification — the Link Object: `operationId`, `operationRef`, the
-   `parameters` map, and runtime expressions such as `$response.body#/id`.
+3. OpenAPI Specification — the Link Object, `operationId`, `operationRef`,
+   runtime expressions and parameter binding.
    https://spec.openapis.org/oas/latest.html
 
-4. Swagger documentation, *Links* — “The concept of links is somewhat similar to
-   hypermedia, but OpenAPI links do not require the link information present in
-   the actual responses.”
+4. Swagger, *Links* — OpenAPI links as design-time relationships whose
+   information need not appear in response instances.
    https://swagger.io/docs/specification/v3_0/links/
 
-**The round trip**
+**Costs and assurance**
 
-5. Roy T. Fielding, “REST APIs must be hypertext-driven,” 2008 — entry with no
-   prior knowledge beyond the initial URI and the standardized media types.
-   https://roy.gbiv.com/untangled/2008/rest-apis-must-be-hypertext-driven
-
-6. Roy T. Fielding, *Architectural Styles and the Design of Network-based
-   Software Architectures*, 2000 — section 5.1.5 on the uniform interface
-   degrading efficiency, and REST being optimized for the common case of the
-   Web.
+5. Roy T. Fielding, *Architectural Styles and the Design of Network-based
+   Software Architectures*, 2000 — the efficiency cost of the uniform
+   interface and REST's optimization for the Web's common case.
    https://ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm
 
-**The pipeline gate**
-
-7. oasdiff — command-line OpenAPI diff and breaking-change detection, run
-   locally or as a CI action on the pull request.
+6. oasdiff — OpenAPI compatibility and breaking-change detection.
    https://github.com/oasdiff/oasdiff
 
-8. OpenTelemetry, *Semantic Conventions for HTTP Spans* — span names as
-   `{method} {target}` with a low-cardinality target; “Instrumentation MUST NOT
-   default to using URI path as a `{target}`”; `http.route` as the matched
-   low-cardinality route template, not to be substituted by the URI path.
+7. OpenTelemetry, *Semantic Conventions for HTTP Spans* — low-cardinality span
+   targets, `http.route` for servers, `url.template` for clients, and the
+   prohibition on substituting raw paths.
    https://opentelemetry.io/docs/specs/semconv/http/http-spans/
 
-**The retry**
+8. RFC 9110, *HTTP Semantics* — safe and idempotent methods and retry after
+   connection failure.
+   https://www.rfc-editor.org/rfc/rfc9110
 
-9. RFC 9110, *HTTP Semantics* — idempotent methods, and automatic retry after
-   a connection failure.
-   https://www.rfc-editor.org/rfc/rfc9110#name-idempotent-methods
+9. Stripe, *Versioning* and *Upgrades* — dated API versions and the published
+   categories of backwards-compatible change.
+   https://docs.stripe.com/api/versioning
+   https://docs.stripe.com/upgrades
 
-10. Carson Gross, “Hypermedia Clients” — links in JSON carrying no method
-    information.
-    https://four.htmx.org/essays/hypermedia-clients
+**MCP**
 
-**The mispricing**
+10. Model Context Protocol, specification `2026-07-28`, *Tools* — tool discovery,
+   descriptions and schemas, the non-variance rule, authorization carve-out and
+   deterministic ordering for caching.
+   https://modelcontextprotocol.io/specification/2026-07-28/server/tools
 
-11. Stripe, *Versioning* — dated releases, the `Stripe-Version` header, major
-    versus monthly releases.
-    https://docs.stripe.com/api/versioning
+11. Model Context Protocol, specification `2026-07-28`, *Resources* — resource
+    discovery and reading as a channel separate from tool enumeration.
+    https://modelcontextprotocol.io/specification/2026-07-28/server/resources
 
-12. Stripe, *Upgrades* — the published list of backwards-compatible changes:
-    new resources, new optional request parameters, new response properties,
-    property reordering, opaque string format, new event types. No entry
-    concerns URLs.
-    https://docs.stripe.com/upgrades
+12. Model Context Protocol, specification `2026-07-28`, *Caching* — cacheable
+    list results, `ttlMs` and `cacheScope`.
+    https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/caching
 
-13. Fabio Ellena, “Who Pays for the Pressure,” 2026 — pressure relocated onto a
-    contract, and who carries it.
-    https://fblln.github.io/articles/who-pays-for-the-pressure/
+13. Model Context Protocol, “The 2026-07-28 Specification” — the stateless core,
+    explicit handles and list-result caching.
+    https://blog.modelcontextprotocol.io/posts/2026-07-28/
 
 **In this series**
 
-14. Fabio Ellena, “The Browser Was Never the Smart Client,” 2026 — Part I.
+14. Fabio Ellena, “The Browser Was Only Half the Client,” 2026 — Part I.
     https://fblln.github.io/articles/the-browser-was-never-the-smart-client/
