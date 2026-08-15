@@ -1,0 +1,12 @@
+{
+  "name": "fblln-site-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:404": "node --test tests/404-pages.test.mjs",
+    "test:e2e": "NO_COLOR=true trunk build && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

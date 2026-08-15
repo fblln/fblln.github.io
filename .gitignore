@@ -2,6 +2,9 @@
 target/
 .DS_Store
 .playwright-mcp/
+node_modules/
+test-results/
+playwright-report/
 # Design language volumes. Kept in the working tree because they are the
 # reference the site is built against, but deliberately untracked: they are
 # large self-contained pages carrying embedded woff2, and they are authored

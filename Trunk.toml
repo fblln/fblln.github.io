@@ -16,7 +16,7 @@ command = "sh"
 command_arguments = ["tools/post-build.sh"]
 
 [watch]
-watch = ["src", "shared", "styles.css", "index.html", "assets", "content", "tools/blog/src", "tools/blog/article.css"]
+watch = ["src", "shared", "styles.css", "index.html", "404.html", "404.css", "assets", "content", "tools/blog/src", "tools/blog/article.css"]
 ignore = ["dist"]
 
 [serve]
