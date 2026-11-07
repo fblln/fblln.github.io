@@ -1,8 +1,8 @@
 .ds-impact {
   display: grid;
   align-content: space-between;
-  gap: 2rem;
-  min-height: 190px;
+  gap: var(--content-space);
+  min-height: 160px;
   padding: var(--pad);
   border: 1px solid var(--line);
   font-family: var(--font-sans);
@@ -19,3 +19,5 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+@media (max-width: 680px) { .ds-impact { min-height: 128px; } }

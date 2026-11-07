@@ -1,8 +1,9 @@
 .ds-section-heading {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
-  gap: 2rem;
+  gap: var(--content-space);
   align-items: end;
+  margin-bottom: var(--heading-space);
   font-family: var(--font-sans);
 }
 .ds-eyebrow {
@@ -17,8 +18,8 @@
   margin: 0;
   font-size: clamp(2.2rem, 5.5vw, 5.4rem);
   font-weight: 800;
-  line-height: 0.84;
-  letter-spacing: -0.068em;
+  line-height: 0.86;
+  letter-spacing: -0.04em;
 }
 /* The site's lead section (the work) keeps the larger step; every other
    section heading uses the size above. */

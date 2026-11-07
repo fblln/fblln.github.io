@@ -40,14 +40,10 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .section-index { padding: var(--pad) 0 0 var(--pad); border-right: 1px solid var(--line); font-family: var(--font-mono); font-size: var(--label); }
 .eyebrow { margin: 0 0 1rem; font-family: var(--font-mono); font-size: var(--label); font-weight: 700; letter-spacing: 0.1em; }
 
-.hero { min-height: calc(100vh - 64px); }
-/* The hero is pinned to the fold, so on tall viewports (tablet portrait
-   especially) there is height left over. All of it goes into the middle row,
-   between the eyebrow and the headline: the headline sits on the closing line
-   and the fold, and the eyebrow stays at the top. Spreading the slack evenly
-   instead left the headline floating between two empty bands. With no slack
-   the middle row collapses to the gap floor. */
-.hero-content { display: grid; grid-template-rows: auto 1fr auto; gap: clamp(1.5rem, 4.5vh, 3rem); padding: clamp(2rem, 5vw, 4rem) var(--pad) var(--pad); overflow: hidden; }
+/* Keep the introduction content-sized. A flexible middle row used to turn
+   tall screens into several hundred pixels of dead space above the headline. */
+.hero { min-height: 0; }
+.hero-content { display: grid; grid-template-rows: auto auto auto; gap: var(--heading-space); padding: var(--section-space) var(--pad); overflow: hidden; }
 .hero h1 { align-self: end; max-width: 15ch; margin: 0; font-size: clamp(3.2rem, 10.7vw, 10rem); font-weight: 900; line-height: 0.82; letter-spacing: -0.045em; text-transform: uppercase; }
 .hero h1 em { color: var(--signal); font-style: normal; }
 .hero-bottom { display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(260px, 1.2fr); gap: 2rem; align-items: end; border-top: 1px solid var(--line); padding-top: var(--pad); }
@@ -68,17 +64,14 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 }
 
 .impact-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
-.impact-cell { display: grid; align-content: space-between; min-height: 190px; padding: var(--pad); border-right: 1px solid var(--line); }
+.impact-cell { display: grid; align-content: space-between; min-height: 160px; padding: var(--pad); border-right: 1px solid var(--line); }
 .impact-cell:last-child { border-right: 0; }
 .impact-cell strong { font-size: clamp(2.7rem, 6vw, 6rem); line-height: 0.85; letter-spacing: -0.04em; }
 .impact-cell span { max-width: 18ch; color: var(--muted); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
 
-/* Content sections repeat often enough that viewport-width-driven 8rem gutters
-   compound into long stretches of empty page at ordinary desktop heights.
-   The reduced ceiling keeps the editorial rhythm without making every section
-   consume most of a screen before its actual content begins. */
-.work > div:last-child, .principles > div:last-child, .capabilities > div:last-child, .experience > div:last-child, .interests > div:last-child { padding: clamp(3rem, 6vw, 6rem) var(--pad); }
-.section-heading { display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; align-items: end; margin-bottom: clamp(2.25rem, 4vw, 4.5rem); }
+/* One section rhythm keeps adjacent bands consistent on every surface. */
+.work > div:last-child, .principles > div:last-child, .capabilities > div:last-child, .experience > div:last-child, .interests > div:last-child { padding: var(--section-space) var(--pad); }
+.section-heading { display: grid; grid-template-columns: 1.5fr 1fr; gap: var(--content-space); align-items: end; margin-bottom: var(--heading-space); }
 .section-heading h2, .education h2, .contact h2 { margin: 0; font-size: clamp(2.2rem, 5.5vw, 5.4rem); line-height: 0.86; letter-spacing: -0.04em; }
 /* One step up for the two headings that carry the page: the work, and the
    closing call to contact. At one size for every section, nothing after the
@@ -111,10 +104,10 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
 .principles { background: var(--ink); color: var(--paper); }
 .principles .section-index { border-color: rgba(242,240,233,0.25); }
 .principle-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid rgba(242,240,233,0.3); }
-.principle-grid article { min-height: 330px; padding: 1.5rem; border-right: 1px solid rgba(242,240,233,0.3); }
+.principle-grid article { min-height: 0; padding: 1.5rem; border-right: 1px solid rgba(242,240,233,0.3); }
 .principle-grid article:last-child { border-right: 0; }
 .principle-grid article > span { color: var(--signal); font-family: var(--font-mono); }
-.principle-grid h3 { margin: 5rem 0 1rem; font-size: clamp(1.5rem, 2.8vw, 2.6rem); line-height: 0.94; letter-spacing: -0.04em; }
+.principle-grid h3 { margin: 2rem 0 1rem; font-size: clamp(1.5rem, 2.8vw, 2.6rem); line-height: 0.94; letter-spacing: -0.04em; }
 .principle-grid p { color: rgba(242,240,233,0.66); line-height: 1.5; }
 
 /* Capabilities matrix: labeled tag groups on a two-column brutalist grid. The
@@ -163,7 +156,7 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
    signal so each orange field arrives as a change of register. */
 .education a:focus-visible, .contact a:focus-visible, .project-row.active .project-open:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .education ::selection, .contact ::selection, .project-row.active ::selection { background: var(--ink); color: var(--signal); }
-.education-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; padding: clamp(3rem, 6vw, 6rem) var(--pad); }
+.education-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--heading-space); padding: var(--section-space) var(--pad); }
 .degree-list { border-top: 2px solid var(--ink); }
 .degree-list article { display: grid; gap: 0.65rem; padding: 1.5rem 0; border-bottom: 1px solid rgba(10,10,10,0.35); }
 .degree-list strong { font-size: 1.1rem; }
@@ -174,18 +167,18 @@ section[id], .project-row[id] { scroll-margin-top: 64px; }
    to the writing. The point is the linkage — trekking → Ridgeline, astro →
    telemetry — so the reader sees the projects grow out of the life, not beside it. */
 .interest-grid { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 2px solid var(--ink); }
-.interest-grid article { display: grid; align-content: start; gap: 1rem; padding: 2rem 1.5rem; border-bottom: 1px solid var(--line); }
+.interest-grid article { min-width: 0; display: grid; align-content: start; gap: 1rem; padding: 2rem 1.5rem; border-bottom: 1px solid var(--line); }
 .interest-grid article:first-child { border-right: 1px solid var(--line); }
 .interest-grid .eyebrow { margin: 0; color: var(--signal-text); }
-.interest-grid h3 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.5rem); line-height: 0.95; letter-spacing: -0.035em; text-transform: uppercase; }
+.interest-grid h3 { overflow-wrap: anywhere; margin: 0; font-size: clamp(1.6rem, 3vw, 2.5rem); line-height: 0.95; letter-spacing: -0.035em; text-transform: uppercase; }
 .interest-grid p:not(.eyebrow) { max-width: 52ch; margin: 0; color: var(--muted); line-height: 1.5; }
 .interest-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.5rem; }
 .interest-links a { font-family: var(--font-mono); font-size: var(--label); font-weight: 700; letter-spacing: 0.04em; text-underline-offset: 4px; }
 .interest-links a:hover { color: var(--signal-text); }
 
-.contact { display: grid; grid-template-columns: minmax(260px, 0.65fr) 1.35fr; min-height: 75vh; background: var(--signal); color: var(--ink); }
+.contact { display: grid; grid-template-columns: minmax(260px, 0.65fr) 1.35fr; min-height: 0; background: var(--signal); color: var(--ink); }
 .contact img { width: 100%; height: 100%; max-height: 760px; object-fit: cover; filter: grayscale(1) contrast(1.15); }
-.contact > div { display: grid; align-content: space-between; gap: 3rem; padding: clamp(3rem, 6vw, 6rem) var(--pad); }
+.contact > div { display: grid; align-content: space-between; gap: var(--heading-space); padding: var(--section-space) var(--pad); }
 .contact-links { display: flex; flex-wrap: wrap; gap: 1rem 2rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
 .contact-links a { font-family: var(--font-mono); font-size: var(--label-lg); text-underline-offset: 5px; }
 .contact-links a:hover { text-decoration-thickness: 2px; }
@@ -201,6 +194,7 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
 .overlay-backdrop { position: absolute; inset: 0; border: 0; background: rgba(0,0,0,0.65); opacity: 0; transition: opacity 260ms ease; cursor: w-resize; }
 .case-overlay.open .overlay-backdrop { opacity: 1; }
 .case-body { display: grid; gap: 1.5rem; padding: 2rem 1.5rem 4rem; }
+.case-body > p { margin: 0; }
 .case-body h2 { margin: 0; font-size: clamp(2.5rem, 7vw, 5.5rem); line-height: 0.87; letter-spacing: -0.04em; }
 .case-statement { margin: 0; font-size: 1.35rem; line-height: 1.3; }
 .case-body > p:not(.eyebrow):not(.case-statement) { color: rgba(242,240,233,0.7); line-height: 1.55; }
@@ -247,7 +241,7 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
   .interest-grid { grid-template-columns: minmax(0, 1fr); }
   .interest-grid article:first-child { border-right: 0; }
   .principle-grid article { min-height: auto; border-right: 0; border-bottom: 1px solid rgba(242,240,233,0.3); }
-  .principle-grid h3 { margin-top: 3rem; }
+  .principle-grid h3 { margin-top: 1.5rem; }
   .timeline article { grid-template-columns: 100px 1fr; }
   .timeline article > p { grid-column: 2; }
   .education-layout { grid-template-columns: 1fr; }
@@ -288,7 +282,7 @@ footer button { border: 0; padding: 0; background: transparent; color: inherit; 
   /* Both labels are long enough to own a line on a phone; equal full-width
      buttons beat two ragged pills of different widths. */
   .hero-actions .button { flex: 1 1 100%; }
-  .impact-cell { min-height: 150px; }
+  .impact-cell { min-height: 128px; }
   .project-controls { align-items: stretch; flex-direction: column; }
   .category-list button { min-height: 44px; padding: 0.75rem 0.9rem; }
   .search-box { min-width: 100%; }
