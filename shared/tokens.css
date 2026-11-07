@@ -21,6 +21,11 @@
   --line-soft: rgba(10, 10, 10, 0.18);
   --muted: #65635e;
   --pad: clamp(1rem, 3vw, 2.5rem);
+  /* Shared rhythm: section boundaries, heading groups, then content gaps.
+     Content determines height; viewport slack must not stretch these steps. */
+  --section-space: clamp(2rem, 4vw, 4rem);
+  --heading-space: clamp(1.5rem, 2.5vw, 2.5rem);
+  --content-space: 1.5rem;
   /* Monospace label sizes. The labels had drifted to ten sizes between 9.3px
      and 12.8px, each chosen locally; two steps keep them reading as one system
      and put the floor at 11.5px, where uppercase tracked mono stays legible. */
