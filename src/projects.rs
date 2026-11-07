@@ -20,7 +20,22 @@ pub(crate) struct Project {
     pub(crate) tags: &'static [&'static str],
 }
 
-pub(crate) const PROJECTS: [Project; 4] = [
+pub(crate) const PROJECTS: [Project; 5] = [
+    Project {
+        slug: "device-reconciler",
+        name: "Device Reconciler",
+        category: "Telemetry",
+        stack: "TYPESCRIPT · KANTO · HONO · DITTO",
+        statement: "Reconcile device intent with delayed telemetry without mistaking acknowledgement for actuation.",
+        evidence: "Real Kanto local twins, Hono telemetry and command channels, and Ditto desired/reported state backed by durable reconciliation.",
+        detail: "The reconciler ranks evidence, correlates observations under clock uncertainty, and persists deadlines and in-flight commands in PostgreSQL. Idempotent dispatch, override precedence, and restart tests keep an accepted command distinct from a confirmed device state.",
+        metric: "2",
+        metric_label: "channels, independent clocks",
+        image: "",
+        image_alt: "",
+        repo: "https://github.com/fblln/device-reconciler",
+        tags: &["IoT", "Hono", "Ditto", "Reliability"],
+    },
     Project {
         slug: "slim2m",
         name: "slim2m",
@@ -132,9 +147,9 @@ mod tests {
 
     #[test]
     fn filtering_covers_category_stack_and_tags() {
-        assert!(matches(PROJECTS[2], "Code Intelligence", "tree-sitter"));
-        assert!(matches(PROJECTS[1], "All", "wasm"));
-        assert!(matches(PROJECTS[0], "Embedded", "lwm2m"));
-        assert!(!matches(PROJECTS[3], "Embedded", "telemetry"));
+        assert!(matches(PROJECTS[3], "Code Intelligence", "tree-sitter"));
+        assert!(matches(PROJECTS[2], "All", "wasm"));
+        assert!(matches(PROJECTS[1], "Embedded", "lwm2m"));
+        assert!(!matches(PROJECTS[4], "Embedded", "telemetry"));
     }
 }
