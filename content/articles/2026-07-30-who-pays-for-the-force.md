@@ -1,7 +1,7 @@
 +++
-title = "Who Pays for the Pressure"
+title = "Who Pays for the Force"
 date = "2026-07-30"
-description = "Bad API design is rarely bad taste. It is pressure correctly identified and incorrectly located — real forces from inside the implementation escaping into the contract, where every caller pays for them forever. Read through Google Cloud IoT Core, Datadog monitors, and the designs that got the same problems right."
+description = "Bad API design is rarely bad taste. It is a force correctly identified and incorrectly located — real forces from inside the implementation escaping into the contract, where every caller pays for them forever. Read through Google Cloud IoT Core, Datadog monitors, and the designs that got the same problems right."
 tags = ["API Design", "Architecture", "Complexity"]
 +++
 
@@ -17,13 +17,13 @@ leaks into the resource hierarchy, the URL, the status codes, and the field
 names, and from that point on every client has to learn it too.
 
 I have written twice about
-[architecture following pressure](/articles/architecture-must-follow-pressure/)
+[architecture following force](/articles/architecture-must-follow-force/)
 and about
-[what makes a boundary worth its cost](/articles/risk-complexity-and-pressure/).
+[what makes a boundary worth its cost](/articles/risk-complexity-and-force/).
 This is the same argument pointed at the narrowest, most permanent surface a
 system has.
 
-> Pressure should shape the implementation. It should not shape the contract.
+> Force should shape the implementation. It should not shape the contract.
 
 An interface is the one part of a system that cannot be refactored on a
 Tuesday. Whatever complexity you put there, you have not solved — you have
@@ -38,7 +38,7 @@ caller is a stranger:
 > Does this field exist because the caller needs it, or because we do?
 
 Every leak below survives that question badly. In each case the underlying
-pressure is real — I want to be precise about that, because "this API is bad"
+force is real — I want to be precise about that, because "this API is bad"
 is a cheap sentence and usually a wrong one. Intermittent connectivity is
 real. Ingestion lag is real. Multi-tenant isolation is real. The designs
 below identified the force correctly. They just put the response in the
@@ -136,7 +136,7 @@ and in particular, if the device is not subscribed, it returns
 `FAILED_PRECONDITION`. Being subscribed requires being connected over MQTT
 right now.
 
-The pressure behind that is completely legitimate: the device is on a cellular
+The force behind that is completely legitimate: the device is on a cellular
 link, in a basement, asleep, or driving through a tunnel. The platform cannot
 promise delivery. Reporting that honestly is better than lying.
 
@@ -420,7 +420,7 @@ because the evidence was never recorded.
 
 Read the five together and they are one failure in five costumes.
 
-| Leak | Real pressure behind it | Where it was put |
+| Leak | Real force behind it | Where it was put |
 |---|---|---|
 | Topology in the path | multi-tenant sharding and config | the address |
 | Unactionable status | intermittent connectivity | an error code |
@@ -428,7 +428,7 @@ Read the five together and they are one failure in five costumes.
 | One noun, six lifecycles | ergonomics: alerting in one call | a single resource |
 | Unstated semantics | ingestion lag, late data | a tuning knob |
 
-In every row the pressure is real and the engineering behind it is competent.
+In every row the force is real and the engineering behind it is competent.
 In every row the response was placed on the caller's side of the boundary,
 where it is permanent and multiplied.
 
@@ -464,7 +464,7 @@ trees mean writing a real evaluator instead of a parser. Every one of these
 corrections moves work *inward* — that is the entire point. The interface gets
 smaller precisely because the system got deeper.
 
-The pressure never disappears. It only ever gets assigned.
+The force never disappears. It only ever gets assigned.
 
 Design the contract, and you decide who pays. Publish the mechanism, and you
 have decided too — you have just decided it is not you.
@@ -525,11 +525,11 @@ quote about it below.
     Yaknyam Press, 2021.
     https://web.stanford.edu/~ouster/cgi-bin/book.php
 
-12. Fabio Ellena, “Architecture Must Follow Pressure,” 2026.
-    https://fblln.github.io/articles/architecture-must-follow-pressure/
+12. Fabio Ellena, “Architecture Must Follow Force,” 2026.
+    https://fblln.github.io/articles/architecture-must-follow-force/
 
-13. Fabio Ellena, “Risk, Complexity, and Pressure,” 2026.
-    https://fblln.github.io/articles/risk-complexity-and-pressure/
+13. Fabio Ellena, “Risk, Complexity, and Force,” 2026.
+    https://fblln.github.io/articles/risk-complexity-and-force/
 
 14. Fabio Ellena, “The Lookup That Saves the Handshake,” 2026.
     https://fblln.github.io/articles/the-lookup-that-saves-the-handshake/

@@ -764,8 +764,8 @@ what it decided.
 
 **The ideas**
 
-6. Fabio Ellena, "Architecture Must Follow Pressure," 2026.
-   https://fblln.github.io/articles/architecture-must-follow-pressure/
+6. Fabio Ellena, "Architecture Must Follow Force," 2026.
+   https://fblln.github.io/articles/architecture-must-follow-force/
 
 7. Fabio Ellena, "Performance Is Making Gradle Less Gradle," 2026.
    https://fblln.github.io/articles/performance-is-making-gradle-less-gradle/

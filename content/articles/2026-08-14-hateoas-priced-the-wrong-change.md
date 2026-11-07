@@ -249,7 +249,7 @@ space. Mature public APIs make that particular claim look overpriced. Stripe,
 for example, evolves aggressively through dated versions while treating stable
 routes as part of the integration surface. Its documented compatible changes
 are dominated by payloads, optional parameters, resources, event types and
-opaque values — the places product evolution actually applies pressure.
+opaque values — the places product evolution actually applies force.
 
 That observation is useful, but the conclusion must remain scoped. It shows
 that route relocation is not the main risk in a Stripe-shaped API. It does not
@@ -367,7 +367,7 @@ which the operation might apply.
 Put beside hypermedia, MCP completes the ledger. One design keeps the vocabulary
 stable and makes applicability the client's problem. The other can make
 applicability explicit but may repeat or rediscover the vocabulary. Which
-pressure dominates depends on the deployment.
+force dominates depends on the deployment.
 
 ## Put the choices on one ledger
 

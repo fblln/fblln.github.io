@@ -114,7 +114,7 @@ I finished. But the grade is not the interesting part.
 
 Not "abstraction is good." I have spent years arguing the opposite when it is
 applied before a problem exists — that
-[architecture must follow pressure](/articles/architecture-must-follow-pressure/),
+[architecture must follow force](/articles/architecture-must-follow-force/),
 and that structure introduced on principle rather than in response to a real
 failure mode is just cost.
 
@@ -122,7 +122,7 @@ This was consistent with that, and it took me a while to see why.
 
 The abstraction I built was not architectural. I did not invent a record type
 system or a query language. I wrapped **load and store** — the two operations
-that were producing all of my errors — and nothing else. The pressure was a
+that were producing all of my errors — and nothing else. The force was a
 measured failure mode: I had lost time twice to silently miscomputed offsets,
 and I was going to lose it again. The boundary went exactly there, and nowhere
 else.

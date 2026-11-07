@@ -694,8 +694,8 @@ anything in your system is responsible for it.
 
 **The ideas**
 
-12. Fabio Ellena, "Architecture Must Follow Pressure," 2026.
-    https://fblln.github.io/articles/architecture-must-follow-pressure/
+12. Fabio Ellena, "Architecture Must Follow Force," 2026.
+    https://fblln.github.io/articles/architecture-must-follow-force/
 
 13. Fabio Ellena, "The Runtime Is What's Left Over," 2026.
     https://fblln.github.io/articles/the-runtime-is-what-is-left-over/
