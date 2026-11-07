@@ -378,15 +378,19 @@ wait for confirmation when one does, and the Homematic integration goes further,
 reverting after a thirty-second timeout.
 
 Two things change when this sits on a reconciler that already models its own
-uncertainty. `assumed_state` stops being configuration. The loop knows whether
-anything from a device has ever been placeable in time, and a device that has
-never produced a correlatable reading is exactly one whose state you never
-really get, so the flag is derived and cannot drift out of date the way a
-hand-written one does. `optimistic` stays configuration, because nothing derives
-it. It is a judgement about which lie is worse, and the answer is not a property
-of the hardware: showing "charging" a few seconds early is harmless on a
-charger, and showing "locked" unconfirmed is not acceptable on a door at any
-latency.
+uncertainty. `assumed_state` stops being configuration. The current implementation
+derives it from the evidence available: no observed generation and no clock
+sample means assumed, with separate on and off buttons; either one earns a
+toggle. That is a proxy, not a history of successful correlations. A clock sample
+can still leave every comparison with a command undecidable under the declared
+bounds. Tracking whether a device has ever produced a correlatable reading would
+make the stronger claim precise; the implementation does not yet keep that fact.
+
+`optimistic` stays configuration, because nothing derives it. It is a judgement
+about which lie is worse, and the answer is not a property of the hardware:
+showing "charging" a few seconds early is harmless on a charger, and showing
+"locked" unconfirmed is not acceptable on a door at any latency. The display
+policy never changes what the reconciler claims to have confirmed.
 
 The deadline is what makes the interface honest rather than merely cautious.
 Because the loop holds one, the view carries a countdown instead of a spinner
