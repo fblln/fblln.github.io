@@ -122,7 +122,7 @@ pub fn App() -> impl IntoView {
                     <div>
                         <div class="section-heading">
                             <div><p class="eyebrow">"SELECTED SYSTEMS"</p><h2>"THE WORK"</h2></div>
-                            <p>"Four public projects. Each one built around real data, explicit constraints, and an inspectable technical argument."</p>
+                            <p>"Five public projects. Each one built around real data, explicit constraints, and an inspectable technical argument."</p>
                         </div>
 
                         <div class="project-controls">
