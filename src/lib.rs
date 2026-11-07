@@ -99,23 +99,12 @@ pub fn App() -> impl IntoView {
                     <div class="section-index">"00"</div>
                     <div class="hero-content">
                         <p class="eyebrow">"FABIO ELLENA · SENIOR STAFF SOFTWARE ENGINEER · TURIN"</p>
-                        <h1>"SOFTWARE SHOULD "<br/><em>"SURVIVE"</em><br/>"CONTACT WITH PRODUCTION."</h1>
-                        <div class="runtime-facts" aria-label="Application runtime facts">
-                            <span>"LEPTOS SSG"</span>
-                            <span>"RUST/WASM"</span>
-                            <span>"STATIC HTML"</span>
-                            // Deterministic at build time, overwritten in place
-                            // once the browser can measure it — the same
-                            // mechanism the diagnostics panel uses, so there is
-                            // one path for runtime facts rather than two.
-                            <span id="hero-wasm">{format!("{PRODUCTION_WASM_SIZE} WASM")}</span>
-                            <span id="hero-boot">"BOOT STATIC"</span>
-                        </div>
+                        <h1>"BORING SOFTWARE, "<br/><em>"ON PURPOSE."</em></h1>
                         <div class="hero-bottom">
-                            <p>"I build distributed systems, telemetry platforms, and local-first AI tools for problems where scale, evidence, and reliability are not optional."</p>
+                            <p>"I build distributed systems, telemetry platforms, and local-first AI tools for problems where scale, evidence, and reliability matter."</p>
                             <div class="hero-actions">
-                                <a class="button button-solid" href="#work">"Inspect systems ↓"</a>
-                                <a class="button" href="mailto:ellena.fabio@gmail.com">"Start a conversation ↗"</a>
+                                <a class="button button-solid" href="#work">"See the work ↓"</a>
+                                <a class="button" href="mailto:ellena.fabio@gmail.com">"Get in touch ↗"</a>
                             </div>
                         </div>
                     </div>
@@ -209,10 +198,10 @@ pub fn App() -> impl IntoView {
                             <article><h3>"LANGUAGES"</h3><div class="cap-tags"><span>"Java"</span><span>"TypeScript"</span><span>"Rust"</span><span>"Python"</span><span>"SQL"</span></div></article>
                             <article><h3>"BACKEND"</h3><div class="cap-tags"><span>"Spring Boot"</span><span>"Quarkus"</span><span>"REST APIs"</span><span>"Event-Driven Architecture"</span><span>"API Design"</span></div></article>
                             <article><h3>"CLOUD & INFRASTRUCTURE"</h3><div class="cap-tags"><span>"AWS"</span><span>"Kubernetes"</span><span>"Docker"</span><span>"Serverless"</span><span>"Linux"</span></div></article>
-                            <article><h3>"DATA & MESSAGING"</h3><div class="cap-tags"><span>"Kafka"</span><span>"Kinesis"</span><span>"SQS"</span><span>"MongoDB"</span><span>"DynamoDB"</span><span>"S3"</span></div></article>
+                            <article><h3>"DATA & MESSAGING"</h3><div class="cap-tags"><span>"Kafka"</span><span>"Kinesis"</span><span>"SQS"</span><span>"PostgreSQL"</span><span>"MariaDB"</span><span>"Redis"</span><span>"MongoDB"</span><span>"DynamoDB"</span><span>"S3"</span></div></article>
                             <article><h3>"OBSERVABILITY"</h3><div class="cap-tags"><span>"OpenTelemetry"</span><span>"ELK Stack"</span><span>"CloudWatch"</span><span>"Distributed Tracing"</span></div></article>
                             <article><h3>"CI/CD & QUALITY"</h3><div class="cap-tags"><span>"GitHub Actions"</span><span>"TeamCity"</span><span>"Jenkins"</span><span>"SonarQube"</span><span>"Checkmarx"</span></div></article>
-                            <article><h3>"AI & DEVELOPER PRODUCTIVITY"</h3><div class="cap-tags"><span>"Agentic Workflows"</span><span>"AI-Assisted Development"</span><span>"MCP Integrations"</span><span>"Developer Experience"</span></div></article>
+                            <article><h3>"AI & DEVELOPER PRODUCTIVITY"</h3><div class="cap-tags"><span>"Agentic Workflows"</span><span>"AI-Assisted Development"</span><span>"MCP Integrations"</span><span>"Internal CLI Tooling"</span><span>"Agentic Internal Tooling"</span><span>"Developer Experience"</span></div></article>
                         </div>
                     </div>
                 </section>
@@ -295,7 +284,7 @@ pub fn App() -> impl IntoView {
                     <img src="/assets/fabio.webp" alt="Fabio Ellena" width="460" height="460" />
                     <div>
                         <p class="eyebrow">"OPEN TO HARD PROBLEMS"</p>
-                        <h2>"LET'S BUILD SOMETHING THAT HAS TO WORK."</h2>
+                        <h2>"LET'S BUILD SOMETHING BORING."</h2>
                         <div class="contact-links">
                             <a href="mailto:ellena.fabio@gmail.com">"EMAIL ↗"</a>
                             <a href="https://www.linkedin.com/in/fabioellena/" target="_blank" rel="noreferrer">"LINKEDIN ↗"</a>
@@ -365,7 +354,8 @@ mod tests {
     fn static_render_contains_content_and_hydration_markers() {
         let html = render_static_app();
 
-        assert!(html.contains("SOFTWARE SHOULD"));
+        assert!(html.contains("BORING SOFTWARE,"));
+        assert!(html.contains("ON PURPOSE."));
         assert!(html.contains("<!>"));
         assert!(!html.contains("class=\"topbar\""));
         assert!(!html.contains("id=\"system-panel\""));

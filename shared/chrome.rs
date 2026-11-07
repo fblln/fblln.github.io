@@ -23,7 +23,13 @@ pub const FAVICON_HREF: &str = "data:image/svg+xml,<svg xmlns=%22http://www.w3.o
 /// `base` prefixes home-relative fragments. The portfolio document passes `""`
 /// because `#work` already targets itself; generated pages under another route
 /// pass `"/"` so the same link doesn't scroll whichever document it landed in.
-pub fn topbar(base: &str) -> String {
+///
+/// `current` is the nav href of the page being rendered, or `""` when the page
+/// has no nav entry. The matching link gets `aria-current="page"`, which is both
+/// what a screen reader announces and the hook the stylesheet underlines, so a
+/// reader on an article can see they are in Writing without one more class to
+/// keep in sync.
+pub fn topbar(base: &str, current: &str) -> String {
     let links: String = PRIMARY_NAV
         .iter()
         .map(|item| {
@@ -32,7 +38,12 @@ pub fn topbar(base: &str) -> String {
             } else {
                 item.href.to_string()
             };
-            format!("<a href=\"{href}\">{}</a>", item.label)
+            let marker = if !current.is_empty() && item.href == current {
+                " aria-current=\"page\""
+            } else {
+                ""
+            };
+            format!("<a href=\"{href}\"{marker}>{}</a>", item.label)
         })
         .collect();
     // On the portfolio the wordmark is a same-document jump; everywhere else it
@@ -95,7 +106,7 @@ mod tests {
     /// portfolio needs those exact fragments left alone.
     #[test]
     fn topbar_rebases_fragments_only_for_pages_below_the_root() {
-        let generated = topbar("/");
+        let generated = topbar("/", "");
         for href in ["/#work", "/#capabilities", "/#experience", "/#contact"] {
             assert_eq!(generated.matches(&format!("href=\"{href}\"")).count(), 2);
         }
@@ -103,7 +114,7 @@ mod tests {
         assert!(!generated.contains("href=\"#"));
         assert!(generated.contains("<a class=\"wordmark\" href=\"/\""));
 
-        let portfolio = topbar("");
+        let portfolio = topbar("", "");
         assert_eq!(portfolio.matches("href=\"#work\"").count(), 2);
         assert!(portfolio.contains("<a class=\"wordmark\" href=\"#top\""));
         assert!(!portfolio.contains("href=\"/#"));
@@ -114,7 +125,7 @@ mod tests {
     #[test]
     fn chrome_keeps_the_hooks_both_surfaces_address() {
         for base in ["", "/"] {
-            let html = topbar(base);
+            let html = topbar(base, "");
             assert!(html.contains("class=\"runtime-button\""));
             assert!(html.contains("aria-controls=\"system-panel\""));
             assert!(html.contains("aria-expanded=\"false\""));
@@ -123,6 +134,26 @@ mod tests {
         assert!(panel.contains("id=\"system-panel\""));
         assert!(panel.contains("id=\"system-close\""));
         assert!(panel.contains(" hidden "));
+    }
+
+    /// Only the page's own entry is marked current, in both the desktop and the
+    /// mobile nav, and a page with no nav entry marks nothing. Matching on the
+    /// href rather than a prefix keeps "/articles/" from also lighting up an
+    /// unrelated route that happens to share its start.
+    #[test]
+    fn topbar_marks_only_the_current_entry() {
+        let writing = topbar("/", "/articles/");
+        assert_eq!(
+            writing
+                .matches("href=\"/articles/\" aria-current=\"page\"")
+                .count(),
+            2
+        );
+        assert_eq!(writing.matches("aria-current").count(), 2);
+
+        assert!(!topbar("/", "").contains("aria-current"));
+        assert!(!topbar("", "").contains("aria-current"));
+        assert!(!topbar("/", "/lab/").contains("aria-current"));
     }
 
     /// An id on a row is the contract the browser build uses to overwrite a

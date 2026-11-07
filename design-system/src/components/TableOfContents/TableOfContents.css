@@ -9,7 +9,7 @@
 .ds-toc__title {
   margin: 0 0 0.6rem;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--label);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -31,5 +31,5 @@
   text-decoration: none;
 }
 .ds-toc a:hover {
-  color: var(--signal);
+  color: var(--signal-text);
 }

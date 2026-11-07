@@ -20,3 +20,7 @@ const meta: Meta<typeof NavBar> = {
 export default meta;
 
 export const Default: StoryObj<typeof NavBar> = {};
+
+export const CurrentPage: StoryObj<typeof NavBar> = {
+  args: { current: "/articles/" },
+};

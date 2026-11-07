@@ -10,11 +10,14 @@
   --ink: #0a0a0a; /* primary text / dark surfaces */
   --paper: #f2f0e9; /* page background */
   --signal: #ff3b00; /* accent — links, active, emphasis */
+  --signal-text: #c42d00; /* accent as small text on paper (4.95:1; --signal is 3.1:1) */
   --line: rgba(10, 10, 10, 0.3); /* hairline borders on paper */
   --line-soft: rgba(10, 10, 10, 0.18);
   --line-invert: rgba(242, 240, 233, 0.25); /* hairlines on ink surfaces */
   --muted: #65635e; /* secondary text on paper */
   --muted-invert: rgba(242, 240, 233, 0.65); /* secondary text on ink */
+  --label: 0.72rem; /* monospace labels, meta, tags */
+  --label-lg: 0.8rem; /* larger monospace links and article meta */
   --ok: #149447; /* healthy status dot */
   --code-bg: #2b303b; /* code block background (base16-ocean.dark) */
 

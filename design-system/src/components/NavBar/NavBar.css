@@ -17,7 +17,7 @@
   color: var(--ink);
 }
 .ds-wordmark:hover {
-  color: var(--signal);
+  color: var(--signal-text);
 }
 .ds-nav {
   display: flex;
@@ -34,6 +34,12 @@
 }
 .ds-nav a:hover {
   text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.ds-nav a[aria-current="page"] {
+  text-decoration: underline;
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 2px;
   text-underline-offset: 5px;
 }
 .ds-topbar__action {

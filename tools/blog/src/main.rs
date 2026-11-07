@@ -362,7 +362,9 @@ fn article_css(code_css: &str) -> String {
 
 const FOOTER: &str = "<footer class=\"site\"><span>© 2026 Fabio Ellena</span><span><a href=\"/articles/feed.xml\">RSS</a></span></footer>";
 
-fn shell(head: &str, body: &str) -> String {
+/// `current` is the nav href this page belongs to (`""` for unlisted pages
+/// like the lab), so the shared topbar can mark it.
+fn shell(head: &str, body: &str, current: &str) -> String {
     let enhance = ENHANCE_SCRIPT.get().map(String::as_str).unwrap_or("");
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
@@ -373,7 +375,7 @@ fn shell(head: &str, body: &str) -> String {
 <link rel=\"alternate\" type=\"application/atom+xml\" href=\"/articles/feed.xml\" title=\"Fabio Ellena — Writing\">\
 </head><body>{topbar}{body}{FOOTER}{panel}{enhance}</body></html>",
         favicon = chrome::FAVICON_HREF,
-        topbar = chrome::topbar("/"),
+        topbar = chrome::topbar("/", current),
         panel = chrome::system_panel(&DIAGNOSTICS, PANEL_NOTE)
     )
 }
@@ -425,7 +427,7 @@ are already carried by an article; the rest are here to have their cost measured
         count = instruments::INSTRUMENTS.len(),
     );
 
-    shell(head, &body)
+    shell(head, &body, "")
 }
 
 fn article_page(a: &Article, newer: Option<&Article>, older: Option<&Article>) -> String {
@@ -453,7 +455,7 @@ fn article_page(a: &Article, newer: Option<&Article>, older: Option<&Article>) -
         body = a.body,
         nav = post_nav(newer, older),
     );
-    shell(&head, &body)
+    shell(&head, &body, "/articles/")
 }
 
 /// Bottom-of-article links to the chronologically adjacent posts.
@@ -526,7 +528,7 @@ fn index_page<'a>(
 <p>{desc}</p><div class=\"post-meta\"><span>{date}</span><span>{min} min</span>{tags}</div></li>",
                 slug = a.slug,
                 title = esc(&a.fm.title),
-                desc = esc(&a.fm.description),
+                desc = esc(lede(&a.fm.description)),
                 date = esc(&a.fm.date),
                 min = a.minutes,
             )
@@ -540,7 +542,7 @@ fn index_page<'a>(
     let body = format!(
         "<main><p class=\"eyebrow\">Writing</p><h1 class=\"title\">{etitle}</h1>{list}</main>"
     );
-    shell(&head, &body)
+    shell(&head, &body, "/articles/")
 }
 
 /// Renders topic links consistently on article detail and listing pages. Both
@@ -600,6 +602,33 @@ fn sitemap(articles: &[Article]) -> String {
 
 // ---- small helpers ----
 
+/// The first sentence of a description, for the Writing index. Descriptions are
+/// written for search snippets and social cards, so they run three or four
+/// sentences; a list of those reads as a wall, and the index exists to be
+/// scanned. Article pages and the Atom feed still carry the full description.
+///
+/// A sentence ends at `.`, `?` or `!` followed by a space and a capital letter
+/// or an opening quote. Requiring the capital keeps version numbers ("9.7") and
+/// lowercase continuations ("e.g. the") from cutting the sentence short. With
+/// no such boundary the whole description is returned unchanged.
+fn lede(description: &str) -> &str {
+    for (i, c) in description.char_indices() {
+        if !matches!(c, '.' | '?' | '!') {
+            continue;
+        }
+        let end = i + c.len_utf8();
+        let mut after = description[end..].chars();
+        if after.next() == Some(' ')
+            && after
+                .next()
+                .is_some_and(|n| n.is_uppercase() || matches!(n, '“' | '"'))
+        {
+            return &description[..end];
+        }
+    }
+    description
+}
+
 fn esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -645,8 +674,48 @@ fn slug(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        HEADER_CSS, READING_CSS, TOKENS_CSS, TYPOGRAPHY_CSS, article_css, prose_words, render_tags,
+        HEADER_CSS, READING_CSS, TOKENS_CSS, TYPOGRAPHY_CSS, article_css, lede, prose_words,
+        render_tags,
     };
+
+    /// The index shows one sentence per article: the cut lands on the first
+    /// sentence boundary, keeps its punctuation, and never splits a version
+    /// number or an abbreviation followed by lowercase.
+    #[test]
+    fn lede_keeps_only_the_first_sentence() {
+        let cases = [
+            (
+                "Three articles argued this. The derivation stops.",
+                "Three articles argued this.",
+            ),
+            ("Is it slow? Measure it.", "Is it slow?"),
+            ("It failed! Then it held.", "It failed!"),
+            ("It ended. “Quoted” follows.", "It ended."),
+            ("It ended. \"Quoted\" follows.", "It ended."),
+            ("Gradle 9.7 promotes it. Next.", "Gradle 9.7 promotes it."),
+            (
+                "Tools, e.g. the linter, help. Second.",
+                "Tools, e.g. the linter, help.",
+            ),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(lede(input), expected, "input: {input}");
+        }
+    }
+
+    /// Without a sentence boundary the description passes through whole, so a
+    /// one-sentence description is never truncated or emptied.
+    #[test]
+    fn lede_returns_single_sentences_unchanged() {
+        for s in [
+            "One sentence only.",
+            "No terminal punctuation",
+            "Ends. lowercase after",
+            "",
+        ] {
+            assert_eq!(lede(s), s);
+        }
+    }
 
     const DESIGN_SYSTEM_PROSE_CSS: &str =
         include_str!("../../../design-system/src/components/Prose/Prose.css");

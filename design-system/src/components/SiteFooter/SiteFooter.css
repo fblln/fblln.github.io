@@ -8,7 +8,7 @@
   color: var(--muted-invert);
   border-top: 1px solid var(--line-invert);
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: var(--label);
 }
 .ds-footer a {
   color: inherit;
@@ -17,5 +17,11 @@
 @media (max-width: 680px) {
   .ds-footer {
     flex-direction: column;
+  }
+  /* 44px tap targets on phones, matching the site footer. */
+  .ds-footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }

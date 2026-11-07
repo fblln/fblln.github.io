@@ -77,7 +77,7 @@ fn inject_static_body(document: &str, app: &str) -> Option<String> {
     // Chrome sits outside `#app` on purpose: it is emitted from the same shared
     // builder the article generator uses, so keeping it out of Leptos' hydration
     // cursor is what lets one source serve both surfaces.
-    let topbar = chrome::topbar("");
+    let topbar = chrome::topbar("", "");
     let panel = chrome::system_panel(&DIAGNOSTICS, PANEL_NOTE);
     (open <= close).then(|| {
         format!(
