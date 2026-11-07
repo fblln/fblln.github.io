@@ -32,12 +32,12 @@ a { color: inherit; }
   border: 1px solid currentColor;
   padding: 0.3rem 0.45rem;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: var(--label);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.error-eyebrow { margin: 0; color: var(--signal); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.error-eyebrow { margin: 0; color: var(--signal-text); font-family: var(--font-mono); font-size: var(--label); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .error-copy { max-width: 48ch; color: var(--muted); font-size: clamp(1rem, 1.7vw, 1.25rem); line-height: 1.45; }
 
 /* A fixed geographic coordinate space lets the contour geometry scale as one
@@ -60,7 +60,7 @@ a { color: inherit; }
 .coordinate-contours .contour-index { stroke-width: 2.2; }
 .coordinate-contours .contour-ridge { stroke: var(--signal); stroke-width: 1.4; stroke-dasharray: 7 8; }
 .coordinate-contours circle { fill: var(--signal); stroke: var(--paper); stroke-width: 5; vector-effect: non-scaling-stroke; }
-.coordinate-contours text { fill: var(--signal); font-family: var(--font-mono); font-size: 18px; font-weight: 700; letter-spacing: 0.08em; }
+.coordinate-contours text { fill: var(--signal-text); font-family: var(--font-mono); font-size: 18px; font-weight: 700; letter-spacing: 0.08em; }
 .coordinate-crosshair {
   position: absolute;
   inset: 0;
@@ -86,7 +86,7 @@ a { color: inherit; }
 .coordinate-card-head { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
 .coordinate-card h1 { margin: clamp(1.4rem, 4vh, 2.5rem) 0; font-size: clamp(3.5rem, 8vw, 7.5rem); line-height: 0.77; letter-spacing: -0.055em; text-transform: uppercase; }
 .coordinate-card h1 span { color: var(--signal); }
-.coordinate-readout { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.62rem; }
+.coordinate-readout { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: var(--label); }
 .coordinate-readout span { padding: 0.75rem 0.5rem; border-right: 1px solid var(--line); }
 .coordinate-readout span:first-child { padding-left: 0; }
 .coordinate-readout span:last-child { border-right: 0; }

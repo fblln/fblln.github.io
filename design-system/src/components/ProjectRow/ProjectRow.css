@@ -3,9 +3,11 @@
   font-family: var(--font-sans);
   transition: opacity 160ms ease;
 }
+/* A signal surface: see Foundations/Surfaces for the rules (ink text, ink at
+   78% for secondary text, never --muted on orange). */
 .ds-project--active {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--signal);
+  color: var(--ink);
 }
 .ds-project__open {
   display: grid;
@@ -24,7 +26,7 @@
 .ds-project__number,
 .ds-project__stack {
   font-family: var(--font-mono);
-  font-size: 0.67rem;
+  font-size: var(--label);
   letter-spacing: 0.06em;
 }
 .ds-project__name {
@@ -50,7 +52,7 @@
   line-height: 1.4;
 }
 .ds-project--active .ds-project__summary p {
-  color: color-mix(in srgb, var(--paper) 72%, transparent);
+  color: color-mix(in srgb, var(--ink) 78%, transparent);
 }
 .ds-project__tags {
   display: flex;

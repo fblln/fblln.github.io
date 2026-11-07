@@ -18,7 +18,8 @@ export interface ProjectRowProps {
 }
 
 /** A row in the work list: index, name, stack, and a disclosure arrow, with an
- *  optional summary + tags underneath. Inverts to ink when `active`. */
+ *  optional summary + tags underneath. Fills with the signal surface when
+ *  `active`. */
 export function ProjectRow({
   number,
   name,

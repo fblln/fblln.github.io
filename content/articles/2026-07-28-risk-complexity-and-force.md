@@ -1,12 +1,12 @@
 +++
-title = "Risk, Complexity, and Pressure"
+title = "Risk, Complexity, and Force"
 date = "2026-07-28"
-description = "Architecture Must Follow Pressure sits between George Fairbanks's risk-driven architecture and John Ousterhout's philosophy of software design."
+description = "Architecture Must Follow Force sits between George Fairbanks's risk-driven architecture and John Ousterhout's philosophy of software design."
 tags = ["Architecture", "Software Design", "Risk", "Complexity"]
 +++
 
 After publishing
-[Architecture Must Follow Pressure](/articles/architecture-must-follow-pressure/),
+[Architecture Must Follow Force](/articles/architecture-must-follow-force/),
 I started wondering whether I had accidentally given a new name to an old idea.
 This is always a dangerous question. You spend years watching systems fail,
 extract a principle from the wreckage, give it a memorable name, and then
@@ -17,10 +17,10 @@ In this case, I found two close relatives:
 * George Fairbanks's **risk-driven model of software architecture**;
 * John Ousterhout's **philosophy of managing software complexity**.
 
-Neither says exactly that architecture must follow pressure. But together they
+Neither says exactly that architecture must follow force. But together they
 clarify what I was trying to express. Fairbanks asks where architectural effort
 is justified. Ousterhout asks whether a design actually hides complexity.
-Pressure adds a third question:
+Force adds a third question:
 
 > What force made this mechanism necessary?
 
@@ -54,7 +54,7 @@ The adapter survived.
 
 The service did not.
 
-This is the gap I was trying to describe with the word **pressure**.
+This is the gap I was trying to describe with the word **force**.
 Architecture should not be organised around every event that can be imagined.
 It should respond to forces sufficiently real, costly, or dangerous that the
 simpler design can no longer tolerate them.
@@ -78,23 +78,22 @@ modes. Those costs may be justified, but something must justify them.
 
 This is close to the principle from my original article:
 
-> No architectural pressure, no architectural pattern.
+> No architectural force, no architectural pattern.
 
 Neither idea is anti-architecture. Both reject architecture by ceremony. The
 intervention should follow the threat.
 
-## From pressure to mechanism
+## From force to mechanism
 
-Fairbanks uses risk to direct architectural attention. I use pressure to
-describe the force that makes a simpler design insufficient — and the two chain
-together.
+Fairbanks uses risk to direct architectural attention. I use force to name
+whatever makes a simpler design insufficient, and the two chain together.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 126" role="img" aria-label="A four-stage derivation read left to right: pressure, the force; risk, what it costs; control, the response; mechanism, what you build. A dashed arrow returns from mechanism to pressure, indicating the chain can be read backwards to audit an existing system.">
+<svg viewBox="0 0 620 126" role="img" aria-label="A four-stage derivation read left to right: force, what acts on the design; risk, what it costs; control, the response; mechanism, what you build. A dashed arrow returns from mechanism to force, indicating the chain can be read backwards to audit an existing system.">
   <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">DERIVATION</text>
   <g font-family="var(--font-mono)" font-size="10">
     <rect x="0" y="26" width="130" height="30" fill="var(--signal)"/>
-    <text x="65" y="46" fill="var(--paper)" text-anchor="middle">PRESSURE</text>
+    <text x="65" y="46" fill="var(--paper)" text-anchor="middle">FORCE</text>
     <rect x="163" y="26" width="130" height="30" fill="none" stroke="var(--line)"/>
     <text x="228" y="46" fill="var(--ink)" text-anchor="middle">RISK</text>
     <rect x="326" y="26" width="130" height="30" fill="none" stroke="var(--line)"/>
@@ -108,7 +107,7 @@ together.
     <path d="M456 41 L483 41 M477 37 L483 41 L477 45"/>
   </g>
   <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">
-    <text x="65" y="72">the force</text>
+    <text x="65" y="72">what acts on it</text>
     <text x="228" y="72">what it costs</text>
     <text x="391" y="72">the response</text>
     <text x="555" y="72">what you build</text>
@@ -123,10 +122,9 @@ together.
 </figure>
 
 Suppose an external dependency occasionally becomes slow. The slowness is the
-pressure. Resource exhaustion, cascading latency, and unavailability are the
-risks. Timeouts, concurrency limits, caching, or asynchronous processing are
-possible controls. Those controls create architecture, and now the mechanism has
-a reason to exist.
+force. Resource exhaustion, cascading latency, and unavailability are the risks. Timeouts,
+concurrency limits, caching, or asynchronous processing are possible controls.
+Those controls create architecture, and now the mechanism has a reason to exist.
 
 A queue does not exist because queues decouple things. It exists because the
 producer and consumer must not share availability or throughput. An idempotency
@@ -135,28 +133,28 @@ the result ambiguous, and a retry may duplicate an irreversible operation. A
 state machine is not an impressive diagram; it exists because partial progress
 must survive restarts and delayed messages.
 
-This is where Fairbanks and pressure are closest. Both demand traceability
+This is where Fairbanks and force are closest. Both demand traceability
 between architecture and something that threatens success.
 
-## Risk explains priority; pressure explains shape
+## Risk explains priority; force explains shape
 
-I would not use risk and pressure interchangeably. Fairbanks provides a method
-for deciding what deserves architectural attention. Pressure is more concerned
+I would not use risk and force interchangeably. Fairbanks provides a method
+for deciding what deserves architectural attention. Force is more concerned
 with the shape of the response. I want to walk through a system and ask: what
 force is this resisting? Why is there a queue here? Why is this component
 isolated? Why is this workflow represented as durable state? Why is there a
 separate read model?
 
-Risk tells us that something deserves attention. Pressure explains why the
+Risk tells us that something deserves attention. Force explains why the
 response has this particular form. It may come from production behaviour,
 supplier limitations, regulation, latency budgets, security constraints,
 organisational boundaries, or incidents that reveal invalid assumptions. These
-can all be translated into risks — but pressure keeps attention on the force
-itself and on how it deforms the system.
+can all be translated into risks, but naming the force keeps attention on the
+thing itself and on how it deforms the system.
 
 Risk helps us prioritise.
 
-Pressure helps us explain shape.
+Force helps us explain shape.
 
 ## Ousterhout: structure must earn its cost
 
@@ -281,15 +279,15 @@ A boundary is useful when it contains something:
 
 A boundary containing nothing is just a door in the middle of a corridor.
 
-## Complexity can be pressure
+## Complexity can be a force
 
-This is where Ousterhout and pressure strongly overlap, because complexity can
+This is where Ousterhout and force strongly overlap, because complexity can
 itself make the simpler design insufficient. When every workflow duplicates the
-same retry and concurrency rules, those rules create pressure for a shared
+same retry and concurrency rules, those rules become a force toward a shared
 abstraction. When every caller must understand a supplier's strange error model,
-that complexity creates pressure for a boundary. When idempotency, timeouts, and
-state transitions are repeated across multiple components, the distributed
-knowledge creates pressure for a deeper module.
+that complexity is a force toward a boundary. When idempotency, timeouts,
+and state transitions are repeated across multiple components, the distributed
+knowledge is a force toward a deeper module.
 
 A useful abstraction appears because complexity has accumulated in a form that
 can be compressed. This is different from adding an interface because one day
@@ -302,28 +300,28 @@ Code does not.
 
 ## Complexity and resilience are different objectives
 
-Ousterhout's main concern is complexity experienced by developers. Pressure also
-includes forces acting on the running system and the organisation around it. A
+Ousterhout's main concern is complexity experienced by developers. The forces I
+care about also act on the running system and the organisation around it. A
 component may be easy to understand and still require isolation because it fails
 frequently. A module may have an elegant interface and still require separation
 because two teams deploy independently. A security boundary may increase local
 complexity but remain necessary because trust cannot cross it.
 
-Ousterhout asks whether a design reduces complexity. Pressure asks whether it
-survives the forces acting upon it. Usually these goals reinforce each other.
+Ousterhout asks whether a design reduces complexity. Force asks whether the
+design survives what acts upon it. Usually these goals reinforce each other.
 Sometimes they conflict: a distributed system is more complex than a monolith,
 yet independent scaling, regulatory separation, team ownership, or failure
 isolation may justify that cost.
 
-Pressure does not seek the least complex architecture in absolute terms. It
+Force does not seek the least complex architecture in absolute terms. It
 seeks the least complex architecture capable of withstanding the actual forces.
 
 ## Fairbanks tells us when; Ousterhout tells us whether
 
 Fairbanks asks whether a risk is significant enough to justify architectural
 effort. Ousterhout asks whether the resulting structure reduces complexity or
-merely creates more interfaces and dependencies. Pressure identifies the force
-that put the question on the table in the first place.
+merely creates more interfaces and dependencies. Force names what put the
+question on the table in the first place.
 
 ### A worked example: remote vehicle operation
 
@@ -375,7 +373,7 @@ audience of nobody.
 <figcaption>Closing the connection ends the client's knowledge, not the operation. Everything inside the shaded span happens anyway, and only the poll or webhook — a second, separate conversation — ever closes it.</figcaption>
 </figure>
 
-**Pressure.** The client's knowledge and the system's state stop being the same
+**Force.** The client's knowledge and the system's state stop being the same
 thing the instant a connection ends, and nothing about that looks like a failure
 from either side.
 
@@ -391,11 +389,11 @@ second channel to read the result back.
 Fairbanks tells us that the consequences make this worthy of architectural
 attention. Ousterhout tells us not to expose every retry rule, supplier state,
 and network oddity to every caller — that complexity belongs behind a deep
-capability. Pressure explains why that capability exists.
+capability. Force explains why that capability exists.
 
 The architecture is no longer selected from a catalogue. It is derived.
 
-## When pressure disappears
+## When the force disappears
 
 A mechanism that once reduced risk can later become the main source of
 complexity. A supplier becomes reliable, but the translation layer still
@@ -405,7 +403,7 @@ implementation is deleted, but every operation still crosses an interface
 designed for interchangeable providers.
 
 <figure class="diagram">
-<svg viewBox="0 0 620 146" role="img" aria-label="Two panels. On the left, labelled then, a solid arrow of pressure pushes into a mechanism block. On the right, labelled now, the arrow is gone and only its dashed outline remains, while the mechanism block stands unchanged and unloaded.">
+<svg viewBox="0 0 620 146" role="img" aria-label="Two panels. On the left, labelled then, a solid arrow of force loads a mechanism block. On the right, labelled now, the arrow is gone and only its dashed outline remains, while the mechanism block stands unchanged and unloaded.">
   <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
     <text x="0" y="12">THEN</text>
     <text x="340" y="12">NOW</text>
@@ -414,7 +412,7 @@ designed for interchangeable providers.
     <path d="M0 62 L108 62"/>
   </g>
   <path d="M104 50 L124 62 L104 74" fill="var(--signal)"/>
-  <text x="52" y="42" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="middle">pressure</text>
+  <text x="52" y="42" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="middle">force</text>
   <rect x="130" y="38" width="130" height="48" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
   <text x="195" y="66" font-family="var(--font-mono)" font-size="10" fill="var(--ink)" text-anchor="middle">MECHANISM</text>
   <g stroke="var(--line)" stroke-dasharray="3 3" fill="none">
@@ -432,7 +430,7 @@ designed for interchangeable providers.
 
 The abstraction may have had a legitimate birth. That does not grant it
 immortality. Fairbanks asks whether the original risk still exists. Ousterhout
-asks whether the mechanism now costs more understanding than it saves. Pressure
+asks whether the mechanism now costs more understanding than it saves. Force
 asks:
 
 > Is the force this structure was built to resist still present?
@@ -443,7 +441,7 @@ decision available.
 ## Putting the three ideas together
 
 Fairbanks approaches architecture through engineering risk. Ousterhout
-approaches design through complexity. I arrived at pressure through production
+approaches design through complexity. I arrived at force through production
 systems, failure analysis, and watching useful patterns become harmful when
 separated from the conditions that justified them.
 
@@ -451,7 +449,7 @@ The three ideas fit together:
 
 > Use risk to decide what deserves architectural attention.
 > Use complexity to judge whether the design is helping.
-> Use pressure to explain why the system must have that shape.
+> Use force to explain why the system must have that shape.
 
 The pattern still comes last.
 
@@ -467,5 +465,5 @@ First, find the force.
    Yaknyam Press, 2021.
    https://web.stanford.edu/~ouster/cgi-bin/book.php
 
-3. Fabio Ellena, “Architecture Must Follow Pressure,” 2026.
-   https://fblln.github.io/articles/architecture-must-follow-pressure/
+3. Fabio Ellena, “Architecture Must Follow Force,” 2026.
+   https://fblln.github.io/articles/architecture-must-follow-force/

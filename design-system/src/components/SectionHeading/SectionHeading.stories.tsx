@@ -14,4 +14,10 @@ const meta: Meta<typeof SectionHeading> = {
 };
 export default meta;
 
-export const Default: StoryObj<typeof SectionHeading> = {};
+export const Default: StoryObj<typeof SectionHeading> = {
+  args: { eyebrow: "WHAT I WORK WITH", title: "THE STACK", lead: false },
+};
+
+export const Lead: StoryObj<typeof SectionHeading> = {
+  args: { lead: true },
+};

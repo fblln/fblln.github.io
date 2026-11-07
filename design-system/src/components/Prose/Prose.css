@@ -23,6 +23,7 @@
 }
 .ds-prose p {
   margin: 0 0 1.3rem;
+  overflow-wrap: break-word;
 }
 .ds-prose ul,
 .ds-prose ol {
@@ -31,6 +32,7 @@
 }
 .ds-prose li {
   margin: 0.35rem 0;
+  overflow-wrap: break-word;
 }
 .ds-prose a {
   color: var(--ink);
@@ -39,7 +41,7 @@
   text-underline-offset: 2px;
 }
 .ds-prose a:hover {
-  color: var(--signal);
+  color: var(--signal-text);
   text-decoration-color: var(--signal);
 }
 .ds-prose :not(pre) > code {

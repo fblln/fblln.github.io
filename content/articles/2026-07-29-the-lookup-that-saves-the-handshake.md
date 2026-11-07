@@ -607,7 +607,7 @@ want to be able to *not think about* from the outside.
 </figure>
 
 That is a deep module in the sense
-[I have written about before](/articles/risk-complexity-and-pressure/): the
+[I have written about before](/articles/risk-complexity-and-force/): the
 interface is dramatically simpler than what it hides, and the ratio is the whole
 point. The CID names the association without describing it. The sender knows the
 eight bytes and nothing else — not the format, not the table, not the sharding
@@ -773,7 +773,7 @@ The change that matters is the first operation performed on an incoming packet.
 <figcaption>Same session, same keys, same records. The only structural difference is which link in the chain the protocol depends on for its identity — and who is allowed to change it.</figcaption>
 </figure>
 
-The pressure here was concrete and measurable: NAT timers shorter than device
+The force here was concrete and measurable: NAT timers shorter than device
 sleep cycles, and a battery that cannot pay for a public-key handshake every time
 the network forgets about it. The risk was handshake storms, dropped readings, and
 devices that appear dead for reasons no log explains. The control was a stable
@@ -814,5 +814,5 @@ an entire handshake.
 4. John Ousterhout, *A Philosophy of Software Design*, Second Edition. Yaknyam
    Press, 2021. https://web.stanford.edu/~ouster/cgi-bin/book.php
 
-5. Fabio Ellena, “Risk, Complexity, and Pressure,” 2026.
-   https://fblln.github.io/articles/risk-complexity-and-pressure/
+5. Fabio Ellena, “Risk, Complexity, and Force,” 2026.
+   https://fblln.github.io/articles/risk-complexity-and-force/

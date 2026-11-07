@@ -17,7 +17,7 @@
 .ds-diagnostics span {
   color: rgba(242, 240, 233, 0.55);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: var(--label);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }

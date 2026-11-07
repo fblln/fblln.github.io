@@ -96,10 +96,9 @@ pub fn wire() {
     }
 }
 
-/// Replaces the deterministic build-time placeholders with what this browser
-/// actually did — in the diagnostics panel and in the hero's runtime facts,
-/// which state the same three numbers. Cells are addressed by id so neither
-/// layout has to be known here, and a missing id is simply skipped.
+/// Replaces the deterministic build-time placeholders in the diagnostics panel
+/// with what this browser actually did. Cells are addressed by id so the panel's
+/// layout does not have to be known here, and a missing id is simply skipped.
 ///
 /// Writing to `textContent` after hydration is safe precisely because no signal
 /// owns these nodes: the static render and the first hydrated render both emit
@@ -111,10 +110,8 @@ pub fn publish_measurements() {
         .unwrap_or_else(|| crate::runtime::PRODUCTION_WASM_SIZE.to_string());
     for (id, value) in [
         ("fact-engine", crate::runtime::browser_engine()),
-        ("fact-boot", boot.clone()),
-        ("fact-wasm", size.clone()),
-        ("hero-wasm", format!("{size} WASM")),
-        ("hero-boot", format!("BOOT {boot}")),
+        ("fact-boot", boot),
+        ("fact-wasm", size),
     ] {
         if let Some(cell) = doc.get_element_by_id(&id) {
             cell.set_text_content(Some(&value));

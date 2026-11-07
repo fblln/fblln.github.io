@@ -4,7 +4,7 @@ import { Button } from "./Button";
 const meta: Meta<typeof Button> = {
   title: "Core UI/Button",
   component: Button,
-  args: { children: "Inspect systems ↓" },
+  args: { children: "See the work ↓" },
   argTypes: { variant: { control: "inline-radio", options: ["outline", "solid"] } },
 };
 export default meta;

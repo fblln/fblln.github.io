@@ -1,7 +1,7 @@
 +++
 title = "Performance Is Making Gradle Less Gradle"
 date = "2026-08-07"
-description = "Gradle 9.7 promotes Isolated Projects to incubating, and the headline is parallel project configuration. The real story is that Gradle can only parallelize configuration because it has started making entire categories of previously legal build logic illegal. Performance pressure is quietly turning a programmable build system into a declarative one — and TypeScript is doing the same thing from the opposite direction."
+description = "Gradle 9.7 promotes Isolated Projects to incubating, and the headline is parallel project configuration. The real story is that Gradle can only parallelize configuration because it has started making entire categories of previously legal build logic illegal. The tension between programmability and speed is quietly turning a programmable build system into a declarative one — and TypeScript is doing the same thing from the opposite direction."
 tags = ["Architecture", "Build Systems", "Performance", "Complexity"]
 +++
 
@@ -72,12 +72,12 @@ configure projects concurrently without guessing.
 The causal chain is almost suspiciously clean:
 
 <figure class="diagram">
-<svg viewBox="0 0 620 146" role="img" aria-label="A left-to-right chain of four stages. The first, filled solid, is performance pressure. Arrows lead through parallel configuration, safe concurrency and project isolation. An arrow drops from the last stage into a bar spanning the full width labelled stricter build architecture. A note beneath says nobody chose the boundary for its elegance; the stopwatch chose it.">
+<svg viewBox="0 0 620 146" role="img" aria-label="A left-to-right chain of four stages. The first, filled solid, is performance force. Arrows lead through parallel configuration, safe concurrency and project isolation. An arrow drops from the last stage into a bar spanning the full width labelled stricter build architecture. A note beneath says nobody chose the boundary for its elegance; the stopwatch chose it.">
   <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">THE CHAIN &middot; PERFORMANCE ASKING FOR ARCHITECTURE</text>
   <g font-family="var(--font-mono)" font-size="9" text-anchor="middle">
     <rect x="0" y="26" width="140" height="44" fill="var(--signal)"/>
     <text x="70" y="48" fill="var(--paper)">PERFORMANCE</text>
-    <text x="70" y="60" fill="var(--paper)">PRESSURE</text>
+    <text x="70" y="60" fill="var(--paper)">FORCE</text>
     <rect x="160" y="26" width="140" height="44" fill="none" stroke="var(--line)"/>
     <text x="230" y="48" fill="var(--ink)">PARALLEL</text>
     <text x="230" y="60" fill="var(--ink)">CONFIGURATION</text>
@@ -277,7 +277,7 @@ little over three.
 <figcaption>The bottom row is the one that matters. Medians move for many reasons; a 95th percentile falling by half is the tail of the distribution — the sync that made someone stop and check their phone — being cut off at the source.</figcaption>
 </figure>
 
-Seven minutes to three is a large amount of accumulated pressure finally
+Seven minutes to three is a large amount of accumulated force finally
 finding an exit.
 
 ## TypeScript is doing the same thing from the other end
@@ -324,7 +324,7 @@ permissiveness to invade the JavaScript world. Once it became the
 infrastructure underneath enormous codebases, permissiveness stopped being
 purely an asset.
 
-The pressure changed, so the default changed.
+The force changed, so the default changed.
 
 ## Mature systems tend to get less permissive
 
@@ -374,8 +374,8 @@ something has to give.
 
 This is really why I like the Isolated Projects story. It is the clearest
 recent example of the thing I keep writing about: [architecture must follow
-pressure](/articles/architecture-must-follow-pressure/), and a boundary is
-only [worth its cost](/articles/risk-complexity-and-pressure/) when you can
+force](/articles/architecture-must-follow-force/), and a boundary is
+only [worth its cost](/articles/risk-complexity-and-force/) when you can
 name the force that put it there.
 
 "Projects should not mutate each other" reads like another clean-code
@@ -423,9 +423,9 @@ isolation because isolation is elegant. I do not want declarative builds
 because declarative programming is fashionable. I do not want strict types
 because strict types are morally superior to loose ones.
 
-I want to know what pressure made the restriction necessary.
+I want to know what force made the restriction necessary.
 
-Gradle is a particularly good specimen because the pressure accumulated in
+Gradle is a particularly good specimen because the force accumulated in
 public, over years. It started as an extremely programmable build system.
 Builds became huge. Performance started hurting. And piece by piece, every
 optimization required Gradle to understand more about what the build was
@@ -466,11 +466,11 @@ from.
 
 **The ideas**
 
-6. Fabio Ellena, "Architecture Must Follow Pressure," 2026.
-   https://fblln.github.io/articles/architecture-must-follow-pressure/
+6. Fabio Ellena, "Architecture Must Follow Force," 2026.
+   https://fblln.github.io/articles/architecture-must-follow-force/
 
-7. Fabio Ellena, "Risk, Complexity, and Pressure," 2026.
-   https://fblln.github.io/articles/risk-complexity-and-pressure/
+7. Fabio Ellena, "Risk, Complexity, and Force," 2026.
+   https://fblln.github.io/articles/risk-complexity-and-force/
 
-8. Fabio Ellena, "Who Pays for the Pressure," 2026.
-   https://fblln.github.io/articles/who-pays-for-the-pressure/
+8. Fabio Ellena, "Who Pays for the Force," 2026.
+   https://fblln.github.io/articles/who-pays-for-the-force/

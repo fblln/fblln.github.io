@@ -12,8 +12,18 @@
   --ink: #0a0a0a;
   --paper: #f2f0e9;
   --signal: #ff3b00;
+  /* The accent as small text on paper. #ff3b00 measures 3.1:1 against the
+     paper, enough for display type and fills but under the 4.5:1 WCAG AA needs
+     for text below ~18px; this darker shade measures 4.95:1. On ink surfaces
+     --signal already passes (5.5:1), so this is for paper backgrounds only. */
+  --signal-text: #c42d00;
   --line: rgba(10, 10, 10, 0.3);
   --line-soft: rgba(10, 10, 10, 0.18);
   --muted: #65635e;
   --pad: clamp(1rem, 3vw, 2.5rem);
+  /* Monospace label sizes. The labels had drifted to ten sizes between 9.3px
+     and 12.8px, each chosen locally; two steps keep them reading as one system
+     and put the floor at 11.5px, where uppercase tracked mono stays legible. */
+  --label: 0.72rem;
+  --label-lg: 0.8rem;
 }

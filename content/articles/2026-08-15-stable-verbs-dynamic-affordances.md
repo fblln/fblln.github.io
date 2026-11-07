@@ -354,7 +354,7 @@ refer to the subset that applies. Whether a model host can exploit that subset
 without duplicating schemas in context is an implementation question worth
 measuring.
 
-Taken together, the studies expose two different pressures: transition mistakes
+Taken together, the studies expose two different tensions: transition mistakes
 when applicability is implicit, and context cost when the whole vocabulary is
 eagerly exposed. The proposed hybrid is an attempt to address both, not a result
 either study has already proved.

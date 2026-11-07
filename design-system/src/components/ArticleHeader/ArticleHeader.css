@@ -5,7 +5,7 @@
 .ds-article-header__eyebrow {
   margin: 0 0 1rem;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: var(--label);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -24,10 +24,14 @@
   flex-wrap: wrap;
   gap: 0.6rem;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: var(--label-lg);
   color: var(--muted);
 }
 .ds-article-header__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  box-sizing: border-box;
   border: 1px solid var(--line-soft);
   padding: 0.22rem 0.5rem;
   border-radius: 2px;
