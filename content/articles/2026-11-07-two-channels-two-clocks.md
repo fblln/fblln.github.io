@@ -408,6 +408,48 @@ reconciler evaluates the same evidence in both cases. Generation evidence earns
 `confirmed-exact`, so the interface can distinguish a confirmed result from a
 provisional display.
 
+## When the user presses Start twice
+
+The user has a retry loop too. They press Start, see no change, and press it
+again. The reconciler can keep waiting for one device command while the API
+still treats those clicks as separate instructions. Refreshing the instruction's
+timestamp or clearing a local override would change its meaning, even if no
+second device command were sent.
+
+The [implementation](https://github.com/fblln/device-reconciler) now gives the
+user action its own durable identity. The client sends an `Idempotency-Key` with
+its intent and reuses that key if the response is lost. PostgreSQL records the
+key and the intent in one transaction. Concurrent copies return the same
+operation; reusing a key with a different payload returns a conflict. The
+response includes an operation ID and a URL for its current status, so receipt
+can be shown immediately without claiming that the device has acted.
+
+A second click may generate a different key. If the target and intent source
+are unchanged, it joins the current operation anyway. It does not refresh the
+operator timestamp, clear a local override, or extend a pending command's
+deadline. If another action has superseded the original operation, replaying
+its old key returns `SUPERSEDED` rather than restoring the old request.
+
+Failure needs a different gesture. Sending Start again returns the existing
+failure. An explicit retry names the failed operation and carries a new request
+key; it starts a new evaluation while retaining the device's command counters
+and clock evidence. Retrying that HTTP request returns the same new operation.
+A request naming an operation that is no longer the current failure is rejected.
+
+These identities serve different purposes. The request key identifies the
+user action, the command ID deduplicates delivery, and the generation lets the
+device identify which desired update it applied. The Hono path preserves the
+command identity, but the device application still has to deduplicate physical
+side effects. Disabling a button while confirmation is pending helps the user;
+it cannot substitute for these guarantees across lost responses, multiple tabs,
+or process restarts.
+
+The repository exposes this through its API, without a control frontend. Request
+keys are retained durably with no automatic expiry. The tests cover concurrent
+submissions, persistence after reconnecting, payload conflicts, unchanged
+override metadata, and explicit retry. A production service also needs a
+retention policy and tenant-scoped authentication around that contract.
+
 ## What the invariants caught that I did not
 
 The eight properties this loop must satisfy are written as executable
