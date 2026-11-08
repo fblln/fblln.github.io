@@ -3,12 +3,12 @@
   align-content: space-between;
   gap: var(--content-space);
   min-height: 160px;
-  padding: var(--pad);
+  padding: var(--metric-pad);
   border: 1px solid var(--line);
   font-family: var(--font-sans);
 }
 .ds-impact strong {
-  font-size: clamp(2.7rem, 6vw, 6rem);
+  font-size: var(--metric-size);
   line-height: 0.85;
   letter-spacing: -0.04em;
 }
