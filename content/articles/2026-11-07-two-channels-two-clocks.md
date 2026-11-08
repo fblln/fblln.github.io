@@ -1,42 +1,133 @@
 +++
 title = "Two Channels, Two Clocks"
 date = "2026-11-07"
-description = "A remote command and the state report that should confirm it travel on different channels, stamped by different clocks. The comparison every naive reconciler makes — is this reading newer than my command? — is unsound, and the fix is not a better timestamp. Read through Kubernetes observedGeneration, AWS IoT Device Shadow versions, OCPP RemoteStartTransaction, and the three answers a correlation has."
+description = "A command acknowledgement does not prove a charger started. Device telemetry and command timestamps cannot establish that link either. A generation counter carried from desired state into the device report gives the reconciler the evidence it needs."
 tags = ["Architecture", "Protocol", "Reliability", "Trade-offs"]
 +++
 
 You ask a charger to start. Ninety seconds later the platform's telemetry still
-says plugged in and stopped. One of three things is true. The command is failing
-and nothing will say so. The command worked and the reading predates it. Or the
-answer is not knowable yet, and acting on either guess is a mistake.
+says plugged in and stopped. One of three things is true. The command is
+failing and nothing will say so. The command worked and the reading predates
+it. Or the answer is not knowable yet, and acting on either guess is a mistake.
 
-The third case is the interesting one, and most control loops do not have a way
-to express it. I have been building a desired-state reconciler for this problem,
-a loop that takes an intent (this charger should be charging) and converges a
-device to it through a platform API. The first version was wrong. It was wrong in
-a way that is close to universal, and the mistake is invisible in the code. It
-becomes visible on one question: which clock did each of these numbers come
-from?
+I have been building a desired-state reconciler for this problem. *Desired
+state* is what the user wants: this charger should be charging. *Reported state*
+is the latest account the system has received from the device. The reconciler
+is the software that keeps comparing the two, sends a command when needed, and
+tracks whether it took effect. It also has to know when to wait.
+
+My first version compared timestamps without checking which clock each came
+from. Before getting to that mistake, it helps to lay out what sits between the
+software and the charger.
+
+## What sits between a button and a charger
+
+The system I am working on controls energy devices through an aggregator: a
+service that gives an application one programming interface (API) for equipment
+from several manufacturers. A fleet can include chargers, home batteries, solar inverters,
+and heat pumps. They may all appear in one application, but that does not mean
+they share a connection, a protocol, or an operator.
+
+For a charger reached through its manufacturer's cloud, the path looks like
+this. The arrows show the direction of the messages, not separate physical
+cables:
+
+```text
+COMMAND
+user or schedule → reconciler → aggregator → manufacturer cloud → charger
+
+STATE REPORT
+charger → manufacturer cloud → aggregator → reconciler → user interface
+```
+
+The reconciler remembers what was requested and which command is outstanding.
+The aggregator translates its request into the manufacturer's API. The
+manufacturer's service delivers it over the connection the charger maintains.
+The charger runs firmware—the software inside the appliance—which decides
+whether it can act and controls the hardware.
+
+On the return path, the charger sends measurements and status reports. This is
+*telemetry*: messages such as "plugged in", "charging", or "drawing 7 kW".
+Reports may be sent periodically, when something changes, or in response to a
+poll. The value in the application is therefore the latest report it has
+received, not a direct view of the hardware at this instant.
+
+This is one deployment shape, not a requirement of all connected hardware.
+Some devices expose a local interface; some chargers connect directly to an
+operator's system. Removing a cloud hop can reduce delay, but a command response
+and a later state report still need to be tied together.
+
+## Why one API does not make one platform
+
+There are platforms that unify access. The aggregator is doing exactly that.
+What it cannot do by translating requests is give all the equipment the same
+behaviour.
+
+Different manufacturers ship different firmware, support different operations,
+and manage their own accounts and device connections. Installed equipment also
+outlives individual API versions. Integrating an existing charger usually means
+working with the interface its owner can authorise, rather than replacing its
+firmware or moving it to a new backend. A common protocol helps where it is
+supported; it does not retrofit every device already in someone's garage.
+
+Even "start charging" crosses several decisions. The cloud can accept the
+request while the charger is disconnected. The charger can receive it while
+the car is not ready to draw power. A local schedule or power limit can affect
+what happens next. An application must preserve those distinctions if it is to
+explain why the user is still waiting.
+
+Connectivity software such as [Eclipse Hono](https://eclipse.dev/hono/docs/)
+provides adapters for different device protocols and separate APIs for commands
+and telemetry. That makes integration easier. The application still needs a
+contract for what an acknowledgement means and what proves completion.
+
+The operational problems follow these boundaries. A manufacturer API may limit
+how often the aggregator can poll. A connection can drop after a command was
+sent but before its reply arrives. Retrying may deliver the same command twice.
+A buffered state report can arrive after a newer one. Meanwhile, a person can
+change the device locally without going through our application. The reconciler
+has to retain enough history to avoid treating every mismatch as a reason to
+send another command.
+
+## Receipt, action, and observation are different events
+
+Consider a possible sequence, described here by an outside observer with one
+clock so the order is unambiguous:
+
+| Time | Event |
+| --- | --- |
+| 12:00:00 | The charger records "stopped"; the report waits in a queue. |
+| 12:00:05 | The application requests charging. |
+| 12:00:06 | The platform acknowledges the request. |
+| 12:00:10 | The charger starts charging. |
+| 12:00:20 | The old "stopped" report reaches the application. |
+
+At 12:00:20 the application receives new information about an old state. Acting
+as though "just received" means "just measured" would make it retry a command
+that already worked. A receipt timestamp can tell us when our server got the
+message; it cannot tell us when the charger captured the reading.
+
+The command and telemetry channels are separate logical flows, even when they
+share a network connection. They can pass through different queues and retry
+independently. Receiving a response on one does not establish how far the other
+has progressed.
 
 ## The ack is not the actuation
 
-Consumer energy hardware is not reachable directly. A client talks to a
-platform, which talks to a manufacturer's cloud, which talks to the device over
-whatever link it has. That chain has two channels, and they share nothing.
+An *acknowledgement*, often shortened to *ack*, is a reply confirming some stage
+of receipt or acceptance. *Actuation* is the physical action: in this case,
+starting the charging process. Which stage an ack confirms depends on the API.
 
-The command channel carries an instruction outward and an acknowledgement back.
-Both ends of it are stamped locally. The telemetry channel carries state inward,
-captured on the device's schedule and stamped by the device's clock. Different
-paths, different latencies, different failure modes, different clocks.
-
-The first consequence is the one everybody has met somewhere. An ack means the
-instruction arrived, not that the relay moved. OCPP 1.6 is explicit about it:
-the charge point replies to `RemoteStartTransaction` with a status indicating
-whether it has accepted the request and *will attempt* to start a transaction.
-The transaction itself shows up later as a `StartTransaction`, and the
-connector's actual state as a `StatusNotification`. Those can diverge. There are
-public reports of chargers answering `Accepted` and then sending
-`StatusNotification` with `SuspendedEV`, with no `StartTransaction` at all.
+An ack means the instruction arrived, not that the relay moved. OCPP 1.6 is
+explicit about it. OCPP is the Open Charge Point Protocol, used for communication
+between charging stations and their management systems. The charge point replies
+to `RemoteStartTransaction` with a
+status indicating whether it has accepted the request and *will attempt* to
+start a transaction. The transaction itself shows up later as a
+`StartTransaction`, and the connector's actual state as a `StatusNotification`.
+Those can diverge. There are public reports of chargers answering `Accepted`
+and then sending `StatusNotification` with `SuspendedEV`, with no
+`StartTransaction` at all.
 
 I have written this failure before, one layer down. The Kafka producer in [Some
 Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) can be told a
@@ -45,8 +136,39 @@ before any follower does. The producer is told yes about something that did not
 happen. A charger that acknowledges a start it never performs is the same
 sentence with different hardware, and it is worse in one specific way: Kafka at
 least hands you a single ordered log to reconcile against. Here the thing that
-would confirm the command arrives somewhere else entirely, on a clock you do not
-own.
+would confirm the command arrives somewhere else entirely, on a clock you do
+not own.
+
+## Why the clocks disagree
+
+The application server and the charger each keep time locally. Writing both
+timestamps in UTC gives them the same notation, but does not synchronise the
+clocks that produced them. This is not a timezone problem.
+
+A hardware clock counts ticks from an oscillator. Its rate is not perfect, so
+its error accumulates between corrections. A device can also start with the
+wrong time after losing power or rebooting before it has synchronised. Network
+time services such as NTP correct clock offset and rate, but a device that cannot
+reach its time source has to keep running without fresh corrections. These are
+ordinary clock-management concerns described in
+[RFC 5905](https://www.rfc-editor.org/rfc/rfc5905).
+
+Clock error and delivery delay are separate problems. A perfectly timed reading
+can sit in a queue for thirty seconds. An immediately delivered reading can
+carry a timestamp thirty seconds ahead of our server. Subtracting the capture
+time from the arrival time mixes those two effects.
+
+For example, suppose the device clock is two minutes fast. A reading actually
+taken at 12:00 is stamped 12:02. We send a command at 12:01 by our clock. A plain
+timestamp comparison calls the reading newer than the command, although it was
+taken a minute earlier. The device does not need to be wildly wrong to cause
+trouble; the error only needs to exceed the gap between the two events.
+
+There can be more than two clocks along the path. A vendor might timestamp a
+measurement on the device, stamp it at cloud ingestion, or return the time its
+cache was refreshed. Before comparing a field called `lastSeen`, we need to know
+which event it records and who supplied the time. In my original model it was
+the device's capture timestamp, while the command time came from my server.
 
 ## I compared two clocks and called it evidence
 
@@ -61,181 +183,96 @@ function isEvidenceFor(obs: Observation, state: Phase): boolean {
 ```
 
 That single comparison does real work. It is what stops the duplicate-command
-storm, where a loop sees a device reading "stopped", concludes its start failed,
-sends another, sees "stopped" again a tick later, and hammers a rate-limited API
-that was already retrying on its behalf. Anyone who has written one of these
-loops has written that bug.
+storm, where a loop sees a device reading "stopped", concludes its start
+failed, sends another, sees "stopped" again a tick later, and hammers a
+rate-limited API that was already retrying on its behalf. The stale reading
+keeps triggering the same command.
 
 The comparison is also nonsense. `state.since` is when I issued the command, by
 my clock. `obs.lastSeen` is when the device recorded its state, by the device's
-clock. The expression compiles, runs, passes every test that existed, and orders
-two events which have never been in the same frame of reference. A device running
-ten minutes fast makes every one of its readings look like evidence. A device
-running ten minutes slow disqualifies all of them. Neither device is broken.
+clock. The expression compiles, runs, passes every test that existed, and
+orders two events which have never been in the same frame of reference. A
+device running ten minutes fast makes every one of its readings look like
+evidence. A device running ten minutes slow disqualifies all of them. Either device may still execute commands correctly; its timestamp is not a
+reliable basis for this comparison.
 
-Nothing in the type system objected, because both values were `number`. That is
-the first thing I changed:
+Separating local and device timestamps in the type system helps catch
+accidental mixing, but it does not supply the missing evidence. The report
+needs to identify which desired-state update the device acted on.
 
-```ts
-export type Instant = number & { readonly __kind: 'Instant' };
-export type DeviceInstant = number & { readonly __kind: 'DeviceInstant' };
-export type Duration = number & { readonly __kind: 'Duration' };
+## Ordering state updates with a counter
+
+The solution is to assign a generation to each desired-state update and carry
+that generation through to the device's report. A *generation* is just the
+revision number of the requested state for that device: 41, then 42, then 43. For a charger, the exchange
+would look like this:
+
+```text
+platform → device: desired generation 42, charging = true
+device → platform: accepted generation 42
+device → platform: applied generation 42, charging = true
 ```
 
-Three branded aliases, no runtime cost, and the unsound comparison becomes a
-compile error. Exactly one function in the codebase is permitted to subtract one
-clock from the other, it is a single expression, and reviewing the soundness of
-the whole program's time handling now means reading one line. Staring at the
-original would not have found it. It surfaced because somebody asked which
-channel each timestamp had come from.
+The second message says the request arrived. The third reports that the device
+applied that particular update and reached the requested state. A delayed
+report for generation 41 cannot confirm generation 42, even if it says
+"charging". Neither clock participates in that decision.
 
-## A minimum delay bounds the offset from one side only
+The counter needs a contract: all participants must agree who assigns it and
+what returning it means. The authority accepting desired-state changes
+allocates generations per device and persists them across restarts. A retry of
+the same update retains its generation. A new intent gets a new one. The device
+must associate its reported result with the generation it actually processed;
+copying the latest number onto an unrelated reading would recreate the original
+bug with an integer in place of a timestamp.
 
-Having admitted the two clocks are different, the obvious move is to estimate
-the offset between them and convert. Each snapshot carries one sample: arrival
-time, minus the capture time the device reports. That sample is the clock offset
-plus the transit delay.
+A matching generation alone also does not establish success. The report must
+say whether that update is pending, applied, or rejected, and what state
+resulted. The following is the decision rule for this protocol, not a
+replacement for the whole state machine:
 
-Transit delay is never negative, so the smallest sample observed is the tightest
-estimate of the offset available. NTP's clock filter does the same thing, keeping
-a window of samples and preferring the one with minimum delay. It also has a
-property that did not get enough thought the first time round. The minimum
-sample is an *upper* bound on the offset and only an upper bound:
-
-```
-sample  = offset + latency,  latency >= 0
-offset <= sample
-```
-
-An upper bound on the offset gives an upper bound on when a capture happened in
-local time. That is enough to prove a reading was taken *before* some instant.
-It proves nothing about *after*. Concluding that a snapshot post-dates the
-command requires a lower bound on the offset, which means an upper bound on
-latency. No sample provides one. Somebody has to declare it.
-
-None of this is new. Cristian's 1989 paper on probabilistic clock
-synchronization is about exactly this problem, and it reaches the same shape:
-reading a remote clock when message delay is unbounded yields an *interval*
-containing its value, derived from the round-trip delay, with the midpoint
-chosen because it minimises the maximum error. The useful part is the property
-Cristian puts alongside it. When a read succeeds, the reader knows the precision
-it actually achieved. The estimate carries its own error bar, and a system that
-discards the error bar on the way in has thrown away the only thing that makes
-the estimate safe to use.
-
-Once both bounds are declared, converting a device timestamp into local time
-produces an interval rather than a point:
-
-<figure class="diagram">
-<svg viewBox="0 0 640 190" role="img" aria-label="Two parallel timelines. The upper line is our clock, carrying a marker for the instant a command was issued. The lower line is the device clock, carrying a capture marker. A bracket projected from the capture up onto our clock spans an interval that straddles the command marker, annotated cannot tell.">
-  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
-    <text x="0" y="12">OUR CLOCK</text>
-    <text x="0" y="128">DEVICE CLOCK</text>
-  </g>
-  <line x1="0" y1="46" x2="640" y2="46" stroke="currentColor" stroke-width="1"/>
-  <line x1="0" y1="152" x2="640" y2="152" stroke="currentColor" stroke-width="1"/>
-  <line x1="300" y1="34" x2="300" y2="58" stroke="currentColor" stroke-width="2"/>
-  <text x="300" y="28" font-family="var(--font-mono)" font-size="9" fill="currentColor" text-anchor="middle">command issued</text>
-  <line x1="430" y1="140" x2="430" y2="164" stroke="currentColor" stroke-width="2"/>
-  <text x="430" y="178" font-family="var(--font-mono)" font-size="9" fill="currentColor" text-anchor="middle">capture, device time</text>
-  <path d="M430 140 L430 100 L190 100 L190 76" stroke="var(--muted)" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
-  <path d="M430 140 L430 110 L410 110 L410 76" stroke="var(--muted)" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
-  <line x1="190" y1="66" x2="410" y2="66" stroke="currentColor" stroke-width="2"/>
-  <line x1="190" y1="60" x2="190" y2="72" stroke="currentColor" stroke-width="2"/>
-  <line x1="410" y1="60" x2="410" y2="72" stroke="currentColor" stroke-width="2"/>
-  <text x="300" y="86" font-family="var(--font-mono)" font-size="9" fill="currentColor" text-anchor="middle">cannot tell</text>
-</svg>
-<figcaption>The interval is the honest answer, and its width is the sum of two
-numbers somebody chose. Narrow it and the loop decides sooner and is wrong more
-often.</figcaption>
-</figure>
-
-So the correlation has three outcomes, not two:
-
-```
-lower bound > t   →  after
-upper bound <= t  →  before
-otherwise         →  cannot tell
+```text
+report generation < target generation  → stale for this intent
+report generation > target generation  → refresh the target; this intent was superseded
+report generation = target generation:
+    applied, state matches target      → confirmed
+    rejected                           → failed
+    otherwise                          → keep waiting until the deadline
 ```
 
-Spanner does the same thing at the other end of the reliability spectrum.
-TrueTime's `TT.now()` does not return a timestamp; it returns `[earliest,
-latest]`, and Google spends GPS receivers and atomic clocks on keeping that
-interval narrow rather than on pretending it is a point. A read-write
-transaction then takes its commit timestamp from the top of the interval and
-*waits out* the uncertainty before making its writes visible. The uncertainty is
-exposed in the type and paid for in latency, which is the opposite of hiding it
-behind a single number. If a system with atomic clocks in its datacentres
-declines to collapse the interval, a reconciler talking to a charger over a
-consumer broadband link has no business collapsing it either.
+Kubernetes uses `metadata.generation` to identify a desired-state revision and
+`status.observedGeneration` to identify the revision a controller has observed.
+The status conditions still have to say whether the work succeeded. An observed
+generation tells you which revision a condition describes; it does not turn an
+unsuccessful condition into a successful one. The [API
+conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md)
+and
+[kstatus](https://github.com/kubernetes-sigs/cli-utils/blob/master/pkg/kstatus/README.md)
+make that separation useful to clients waiting for reconciliation.
 
-The third outcome is the whole point, and it is the one a boolean API cannot
-express. `cannot tell` is not a failure and not a maybe-treat-as-false. It means
-wait for a newer snapshot, or wait for the command channel to say something
-first-hand. Collapsing it forces a guess at the exact moment the system has the
-least information available, which is where this class of bug is born. A
-reconciler that cannot say "I do not know yet" will eventually tell somebody
-their car is charging when it is not.
+AWS IoT Device Shadow uses a related versioning mechanism. Its document version
+advances on updates, and a caller can supply the version it expects to prevent
+a conflicting write. A `clientToken` correlates a response with its request.
+These identify document revisions and requests; the shadow version alone does
+not prove that hardware applied a desired state. That still needs a device
+report with the appropriate application-level meaning. The distinction is
+visible in the [shadow document
+contract](https://docs.aws.amazon.com/iot/latest/developerguide/device-shadow-document.html).
 
-## The industry chose a counter
+Lamport's logical clocks provide the basis for ordering events without
+wall-clock comparison. Here the narrower requirement is a sequence of
+desired-state revisions with one allocation authority, carried into the
+resulting reports.
 
-The interval arithmetic was satisfying enough to sit with for a while before
-checking what everyone else does. Everyone else does not use timestamps at all.
-
-Kubernetes puts a sequence number on desired state. The API conventions define
-`metadata.generation` as "a sequence number representing a specific generation of
-the desired state", set by the system and monotonically increasing per resource,
-and `status.observedGeneration` as "the `generation` most recently observed by
-the component responsible for acting upon changes to the desired state". A status
-whose `observedGeneration` is behind the object's `generation` is *known* to be
-stale, not estimated to be. Conditions carry their own copy, defined as the
-generation the condition "was set based upon", so staleness is tracked per
-condition rather than per object. The Gateway API conformance suite asserts the
-counter advances after a spec change, which says how much weight it carries: it
-is what they test to prove reconciliation happened at all.
-
-AWS IoT Device Shadow does the same job with a `version` on the shadow document,
-incremented on every update, and processes an update only if the version supplied
-matches the current one. Optimistic concurrency, not clock comparison. It also
-carries a `clientToken` so a response can be tied back to the request that
-caused it, which is the same idea applied to the command channel rather than the
-state.
-
-Both arrive at one rule. Do not order distributed events by wall clock when a
-counter is available. A counter is written by one party, cannot go backwards,
-cannot collide, and survives a clock correction.
-
-Which is Lamport, in 1978, and it is slightly embarrassing to arrive at it from
-the other direction. The paper defines a clock as a function assigning a number
-to each event in a process, notes that these are logical rather than physical
-clocks, and says they "may be implemented by counters with no actual timing
-mechanism". A generation is a logical clock with one writer. The reason it orders
-events that a wall clock cannot is the reason Lamport gave: ordering is a
-property of the causal structure, and a physical clock is only ever evidence
-about it. All that interval arithmetic is
-what remains when nobody gives you one.
-
-And mostly nobody does. Kubernetes controls software it ships; a charger vendor
-ships firmware to a garage in 2019 and never touches it again. So the fallback
-is not academic, it is the common path, and the right structure is both
-strategies ranked:
-
-```ts
-if (observedGeneration !== null) {
-  return { correlation: byGeneration(observedGeneration, target), source: 'generation' };
-}
-return { correlation: capturedAfter(deviceTime, actedAt, clock, bounds), source: 'clock' };
-```
-
-The `source` field is there so every decision can say which kind of answer it
-got. An operator reading the log should be able to see when the system is
-relying on an estimate, because that is when the declared bounds matter and
-nobody remembers declaring them.
+If an older charger cannot report which update it applied, this protocol needs
+firmware or platform support. A counter invented only at the client cannot fill
+that gap. The client can display reported state and acknowledge that a command
+was accepted, but it cannot claim that the report confirms this command.
 
 ## What you can actually download
 
-Having worked out the shape, the honest next question is whether somebody has
-already built it. Mostly, no. The pieces exist and each is only part of it.
+I looked for an existing implementation. The projects below cover parts of the
+problem, but I still needed to write the reconciliation loop.
 
 [Eclipse Ditto](https://eclipse.dev/ditto/basic-feature.html) comes closest. It
 is an open-source digital-twin framework that separates reported state, which
@@ -245,23 +282,25 @@ your application or device firmware". Ditto holds the two numbers and will not
 drive the device toward one of them. That is a reasonable place to draw a line,
 and it means the loop is yours.
 
-[Azure IoT Plug and Play](https://learn.microsoft.com/azure/iot-pnp/concepts-convention)
-specifies the counter properly, and reading it was mildly deflating. The desired
-section carries a `$version` the hub manages. The device confirms with a
-reported property carrying `av`, an acknowledgment version matching that
-`$version`, and `ac`, a status code: 200 accepted, 400 or 500 refused, and 202
-for an update still in progress that should later finish at 200. The hub mints
-the counter, not the client, which is the correction I needed. And 202 is a
-state I did not have: a device committing to "working on it" rather than leaving
-you to infer from silence. It confirms nothing, and that is not its value. A
-command that times out having only been acknowledged and one that times out
-after the device said it was working are different faults with different owners,
-and a timeout that cannot tell them apart sends somebody to read the wrong logs.
+[Azure IoT Plug and
+Play](https://learn.microsoft.com/azure/iot-pnp/concepts-convention) specifies
+the counter properly, and reading it was mildly deflating. The desired section
+carries a `$version` the hub manages. The device confirms with a reported
+property carrying `av`, an acknowledgment version matching that `$version`, and
+`ac`, a status code: 200 accepted, 400 or 500 refused, and 202 for an update
+still in progress that should later finish at 200. The hub mints the counter,
+not the client, which is the correction I needed. And 202 is a state I did not
+have: a device committing to "working on it" rather than leaving you to infer
+from silence. That status does not confirm actuation, but it helps locate a
+failure. A command that times out having only been acknowledged and one that
+times out after the device said it was working are different faults with
+different owners, and a timeout that cannot tell them apart sends somebody to
+read the wrong logs.
 
 Z-Wave solves the acknowledgement half in the wire format. A SET sent with the
-[Supervision command class](https://docs.silabs.com/z-wave/7.21.3/zwave-api/supervision)
-is answered with a status saying whether the command was understood *and
-executed*, and
+[Supervision command
+class](https://docs.silabs.com/z-wave/7.21.3/zwave-api/supervision) is answered
+with a status saying whether the command was understood *and executed*, and
 [zwave-js](https://github.com/zwave-js/node-zwave-js/discussions/6515)
 separates never-sent from received-but-not-executed from invalid-value. It also
 documents the staleness trap, in a library note: a GET issued immediately after
@@ -272,63 +311,32 @@ is the right shape for the durable half, running one state machine per physical
 device and surviving devices that reboot mid-process. On the charger side
 [EVerest](https://github.com/EVerest/everest) is the serious open stack.
 
-What none of them ship is the loop: ranking evidence sources, holding a
-deadline, and treating "cannot tell" as a first-class outcome rather than a
-boolean somebody guesses at.
+The remaining work is to connect the desired generation to the device result,
+handle stale reports and retries, and enforce a deadline.
 
-## Within one channel, timestamps order perfectly
+## The counter does not choose the deadline
 
-The cross-clock estimate is lossy, so the next question is how little of the
-system has to depend on it. The answer turned out to be: one place.
+A generation tells the loop which update a report belongs to. It cannot make a
+report arrive. The device may be offline, the command may be stuck in a queue,
+or the actuation may have failed without producing a result.
 
-"Is there anything new from the device?" is a question entirely inside the
-telemetry channel. Both timestamps being compared come from the device's clock,
-so the comparison is exact, with no skew term and no third outcome. That only
-works if you keep the device's own timestamp around instead of normalising
-everything into local time on the way in, which is what the first version did.
+The timeout therefore remains a policy choice. A longer timeout gives delayed
+confirmation more time to arrive and makes users wait longer when it never
+will. The loop should distinguish an explicit rejection from a deadline reached
+without confirmation. Only the first establishes that the device refused the
+request; the second leaves the physical outcome unresolved.
 
-So every phase of the state machine carries a watermark: the device timestamp of
-the newest capture it has already accounted for. The term is borrowed from stream
-processing, where a watermark is a monotonic high-water mark of event time used
-to decide when enough has arrived to act, and the reason for borrowing it is the
-same. Out-of-order delivery is normal. Feeds retry, and an older capture can
-land after a newer one. Without a monotonic watermark that late arrival looks
-like news, and a reconciler reads it as the device having drifted back and sends
-a command to fix a state that was already fixed.
-
-The division ends up clean. Within the telemetry channel, exact comparisons.
-Within the command channel, exact matching by command id. Across the two, one
-audited estimate, in one function, with its assumptions in its signature.
-
-## This is a tension, and the bounds are the number
-
-[Some Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) argued that
-a force ends in a mechanism and a tension ends in a number. This is a tension,
-and it took me a while to stop looking for the mechanism.
-
-The force is that you must know whether a command took effect, because a user is
-waiting and a silent failure is the worst outcome. The opposing force is that
-concluding it took effect requires evidence you may not have, and concluding it
-failed sends another command into a system that was already retrying. No design
-makes both complaints go away. What ships is a position on two dials: the skew
-and latency bounds, which decide how often the loop is willing to conclude
-anything, and the command timeout, which decides how long a user waits before
-being told the truth.
-
-Tighter bounds decide more often and are wrong more often. A longer timeout
-reports fewer false failures and makes the user wait longer for a real one.
-Neither belongs in a constant inside the decision function, because neither is a
-technical fact. The timeout is a promise about how long somebody stares at a
-spinner. The bounds are a claim about a fleet. Both belong to whoever knows the
-fleet, so both are parameters, and the only honest thing the code can do is name
-them and show which one it used.
+Retries must preserve that distinction too. Resending an update with the same
+generation should let the receiver recognise a duplicate, rather than turn one
+intent into several independently numbered operations.
 
 ## The charger was charging and I reported that I could not tell
 
-The hardest part of this to argue with is a pair of simulated scenarios whose
-worlds are identical. Same capture interval, same delivery latency, same
-actuation delay, same command. The only difference is whether the device reports
-the generation it last applied, and a test asserts they differ in nothing else.
+Two scenarios from the original clock-based implementation show why I want the
+protocol to carry a generation. They use the same capture interval,
+delivery latency, actuation delay, and command. The only difference is whether
+the device reports the generation it last applied, and a test asserts they
+differ in nothing else.
 
 ```
 ## unprovable-without-a-counter
@@ -347,24 +355,22 @@ the generation it last applied, and a test asserts they differ in nothing else.
 The `truth` lane is the simulator's ground truth, which the reconciler cannot
 see. In the first scenario the charger starts charging twenty seconds in and
 keeps charging for the rest of the run. The command worked. The loop reports
-`FAILED` at five minutes, because under the declared bounds no snapshot can ever
-be *proved* to post-date the command, and the acknowledgement it did get proves
-only that the instruction arrived.
+`FAILED` at five minutes, because under the declared bounds no snapshot can
+ever be *proved* to post-date the command, and the acknowledgement it did get
+proves only that the instruction arrived.
 
-That is a false negative, and it is the correct output. The alternative is a
-system that reports success whenever the evidence is ambiguous, which is a lie
-that looks like a feature until the first time somebody's car did not charge
-overnight. The second scenario is the same world with a device that counts, and
-the ambiguity disappears entirely.
+Here `FAILED` means the confirmation deadline expired, not that the charger
+necessarily stayed stopped. The second scenario supplies the missing applied
+generation and lets the loop confirm the command at 2:30. This is why I would
+require generation reporting in the protocol rather than keep tuning clock
+estimates.
 
-The honest summary of the whole exercise is that the counter is not an
-optimisation. It is the difference between a system that can verify its own
-commands and a system that can only hope.
+In these scenarios, the generation counter supplies the evidence that the
+timestamp comparison cannot.
 
 ## What to show someone who is waiting
 
-All of which raises a question the state machine does not answer. If the system
-genuinely does not know, what does the interface say?
+While confirmation is pending, the interface still has to show a state.
 
 Home Assistant has the vocabulary for this and arrived at it years ago. It
 separates two ideas that look alike. `assumed_state` means no state report ever
@@ -373,18 +379,14 @@ buttons rather than a toggle, because a toggle is a claim that you know the
 current state and are flipping it. `optimistic` means show the new state the
 moment a command is sent, without waiting. A core developer's phrasing is
 better than mine: "optimistic != assumed. Assumed: we never get a state
-reported." Their MQTT entities run optimistically when no state topic exists and
-wait for confirmation when one does, and the Homematic integration goes further,
-reverting after a thirty-second timeout.
+reported." Their MQTT entities run optimistically when no state topic exists
+and wait for confirmation when one does, and the Homematic integration goes
+further, reverting after a thirty-second timeout.
 
-Two things change when this sits on a reconciler that already models its own
-uncertainty. `assumed_state` stops being configuration. The current implementation
-derives it from the evidence available: no observed generation and no clock
-sample means assumed, with separate on and off buttons; either one earns a
-toggle. That is a proxy, not a history of successful correlations. A clock sample
-can still leave every comparison with a command undecidable under the declared
-bounds. Tracking whether a device has ever produced a correlatable reading would
-make the stronger claim precise; the implementation does not yet keep that fact.
+For the counter-based protocol, the interface can show the desired generation,
+the last applied generation, and whether confirmation is pending. Receiving
+telemetry and confirming a command remain separate facts: a device can report
+its state without identifying the update that produced it.
 
 `optimistic` stays configuration, because nothing derives it. It is a judgement
 about which lie is worse, and the answer is not a property of the hardware:
@@ -392,9 +394,8 @@ showing "charging" a few seconds early is harmless on a charger, and showing
 "locked" unconfirmed is not acceptable on a door at any latency. The display
 policy never changes what the reconciler claims to have confirmed.
 
-The deadline is what makes the interface honest rather than merely cautious.
-Because the loop holds one, the view carries a countdown instead of a spinner
-with no end:
+A deadline keeps the interface honest about how long confirmation can take. The
+view can show the time remaining:
 
 ```
 ui @0:10 (careful   )  not charging [unconfirmed, toggle], confirming start (290s left)
@@ -402,45 +403,38 @@ ui @0:10 (optimistic)  charging     [unconfirmed, toggle], confirming start (290
 ui @10:00 (final)      charging     [confirmed-exact, toggle]
 ```
 
-Same reconciler, same evidence, two interfaces saying different things, which is
-exactly where a configuration knob belongs. And only a device that counts earns
-`confirmed-exact`, which puts the value of the counter in front of a user rather
-than leaving it in a log nobody reads.
+The display policy changes the provisional state shown to the user; the
+reconciler evaluates the same evidence in both cases. Generation evidence earns
+`confirmed-exact`, so the interface can distinguish a confirmed result from a
+provisional display.
 
 ## What the invariants caught that I did not
 
 The eight properties this loop must satisfy are written as executable
 postconditions rather than as tests. Never issue into a channel that cannot be
 reached. Never claim convergence without evidence. Never fail except at a
-deadline or on a stated rejection. Never reuse a generation. They run on every
+deadline or on a stated rejection. Never allocate the same generation to different intents. They run on every
 decision of every scenario and every one of six hundred generated worlds, which
 is a different thing from running on the dozen cases a unit test constructs.
 
-Three bugs came out of that. None were the ones I was looking for.
+Two findings matter particularly for the generation-based design.
 
 The first was in a contract rather than in the code. "Claiming convergence
-requires evidence" had been written as a check on the resulting phase, so a loop
-sitting quietly in a converged state, with nothing new to look at, tripped it.
-The property is about the *claim*, not the phase. A claim is exactly a
-transition that moves the watermark.
+requires evidence" had been written as a check on the resulting phase, so a
+loop sitting quietly in a converged state, with nothing new to look at, tripped
+it. The check belongs on the transition that claims convergence, where the
+loop consumes new evidence. Remaining in that phase does not make a new claim.
 
-The second was a contract that had drifted into being stricter than the decision
-it checked. It applied the cross-clock rule to a re-confirmation the decision
-had correctly made from the exact same-clock watermark, and rejected a sound
-answer. There is a comment in that file saying a contract which reimplements the
-rule it checks will drift from it and then check nothing. The comment was right.
-I had done it anyway, in the file where the warning is written.
+The second was in the state machine. Converging from the initial state, where
+the device already happens to match the intent, stamped the phase with a
+generation number that had never been issued to anything. The next genuine
+command then appeared not to advance the counter. The absence of a generation
+belonged in the type, not papered over with a zero.
 
-The third was real. Converging from the initial state, where the device already
-happens to match the intent, stamped the phase with a generation number that had
-never been issued to anything. The next genuine command then appeared not to
-advance the counter. The absence of a generation belonged in the type, not
-papered over with a zero.
-
-The property that found the first two is the one to keep if only one could be
-kept. It tests no output at all. It is a loop over generated worlds asserting
-that the system's own stated rules hold at every step, and it fails on whichever
-world lands on the boundary first.
+The generated-world check tests whether the contracts hold across a sequence of
+decisions. It is a loop over generated worlds asserting that the system's own
+stated rules hold at every step, and it fails on whichever world lands on the
+boundary first.
 
 ## References
 
@@ -479,45 +473,18 @@ world lands on the boundary first.
    associating a response with its request.
    https://docs.aws.amazon.com/iot/latest/developerguide/device-shadow-document.html
 
-**Reading a clock you do not own**
-
 6. L. Lamport, *Time, Clocks, and the Ordering of Events in a Distributed
    System*, Communications of the ACM 21(7):558-565, 1978 — logical clocks as
    counters "with no actual timing mechanism", and happened-before as a partial
    order.
    https://doi.org/10.1145/359545.359563
 
-7. F. Cristian, *Probabilistic clock synchronization*, Distributed Computing
-   3:146-158, 1989 — reading a remote clock across unbounded message delay
-   yields an interval, the midpoint minimises the maximum error, and a
-   successful read tells you the precision it achieved.
-   https://doi.org/10.1007/BF01784024
-
-8. J. C. Corbett et al., *Spanner: Google's Globally-Distributed Database*,
-   OSDI 2012 — TrueTime returns `[earliest, latest]` rather than an instant, and
-   commit wait pays for the uncertainty in latency instead of hiding it.
-   https://research.google/pubs/spanner-googles-globally-distributed-database-2/
-
-9. D. L. Mills et al., RFC 5905, *Network Time Protocol Version 4: Protocol and
-   Algorithms Specification*, section 10, *Clock Filter Algorithm* — the window
-   of samples from which one is selected. NTPsec's documentation states the
-   selection plainly: the sample with minimum delay "generally represents the
-   most accurate offset statistic".
-   https://www.rfc-editor.org/rfc/rfc5905 and
-   https://docs.ntpsec.org/latest/stats.html
-
-10. T. Akidau et al., *The Dataflow Model: A Practical Approach to Balancing
-    Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order
-    Data Processing*, PVLDB 8(12):1792-1803, 2015 — watermarks as a bound on
-    event-time completeness, and the cost of deciding too early or too late.
-    https://www.vldb.org/pvldb/vol8/p1792-Akidau.pdf
-
 **My own**
 
-11. [Some Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) — the
+7. [Some Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) — the
    force-and-tension distinction this article leans on, and the Kafka `acks`
    example of being told yes about something that did not happen.
 
-12. [Who Pays for the Force](/articles/who-pays-for-the-force/) — on forces from
-   inside an implementation escaping into a contract, which is what a skew bound
-   does if you hide it in a constant.
+8. [Who Pays for the Force](/articles/who-pays-for-the-force/) — on forces from
+   inside an implementation escaping into a contract, including the deadline
+   a user must wait for confirmation.
