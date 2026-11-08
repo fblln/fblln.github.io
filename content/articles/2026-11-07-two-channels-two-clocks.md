@@ -119,25 +119,44 @@ of receipt or acceptance. *Actuation* is the physical action: in this case,
 starting the charging process. Which stage an ack confirms depends on the API.
 
 An ack means the instruction arrived, not that the relay moved. OCPP 1.6 is
-explicit about it. OCPP is the Open Charge Point Protocol, used for communication
-between charging stations and their management systems. The charge point replies
-to `RemoteStartTransaction` with a
-status indicating whether it has accepted the request and *will attempt* to
-start a transaction. The transaction itself shows up later as a
-`StartTransaction`, and the connector's actual state as a `StatusNotification`.
-Those can diverge. There are public reports of chargers answering `Accepted`
-and then sending `StatusNotification` with `SuspendedEV`, with no
-`StartTransaction` at all.
+explicit about it. OCPP is the Open Charge Point Protocol, used for
+communication between charging stations and their management systems.
+
+`RemoteStartTransaction.req` carries two fields: a mandatory `idTag` and an
+optional `connectorId`. The charge point answers with a
+`RemoteStartStopStatus`, either `Rejected` or `Accepted`, and the
+specification's own gloss on `Accepted` is "Command will be executed." That is
+a promise about the command. It says nothing about the connector.
+
+Three questions, three messages, three arrival times. Did the instruction reach
+the charger: `RemoteStartTransaction.conf`, immediately. Did a transaction
+begin: a later `StartTransaction.req`, which is where a `transactionId` is
+finally assigned. What is the connector actually doing: `StatusNotification`,
+on its own schedule. Those can diverge. There are public reports of chargers
+answering `Accepted` and then sending `StatusNotification` with `SuspendedEV`
+(a status for an EV declining energy inside a transaction that is already
+running) with no `StartTransaction` at all. The charger reported a state that
+presupposes the thing it never confirmed.
+
+A `StartTransaction.req` does eventually arrive, and nothing in it says which
+remote start caused it. The request carried an `idTag`, and an idTag is a
+credential rather than a request identifier: the same token can be presented at
+the plug by a driver who walked up while your command was in flight. You hold
+an acknowledgement and a transaction with no way to prove they belong to each
+other. OCPP 2.0.1 closes exactly this gap. `RequestStartTransaction` carries a
+`remoteStartId`, the charger echoes it back in the `TransactionEvent` that
+reports the session, and `TransactionEvent` replaces `StartTransaction`,
+`StopTransaction` and the in-transaction meter values with one stream. The
+protocol grew a correlation id, because no acknowledgement could be made to
+carry the answer.
 
 I have written this failure before, one layer down. The Kafka producer in [Some
 Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) can be told a
 write succeeded as soon as the partition leader has it, and the leader can fail
 before any follower does. The producer is told yes about something that did not
-happen. A charger that acknowledges a start it never performs is the same
-sentence with different hardware, and it is worse in one specific way: Kafka at
-least hands you a single ordered log to reconcile against. Here the thing that
-would confirm the command arrives somewhere else entirely, on a clock you do
-not own.
+happen. So is the operator who pressed Start. Kafka at least hands you a single
+ordered log to reconcile against. Here the thing that would confirm the command
+arrives somewhere else entirely, on a clock you do not own.
 
 ## Why the clocks disagree
 
@@ -483,9 +502,12 @@ boundary first.
 **The two channels, in specifications**
 
 1. Open Charge Alliance, OCPP 1.6 (released 2015) — `RemoteStartTransaction.req`
-   / `.conf`: the charge point replies with a status indicating whether it has
-   accepted the request and will attempt to start a transaction. Actual state
-   arrives as `StartTransaction` and `StatusNotification`. The specification is
+   carries `idTag` and an optional `connectorId` and nothing else;
+   `RemoteStartStopStatus.Accepted` is glossed "Command will be executed".
+   Actual state arrives as `StartTransaction` and `StatusNotification`. OCPP
+   2.0.1 adds `RequestStartTransaction.remoteStartId`, echoed back in
+   `TransactionEvent`, which also subsumes `StartTransaction`,
+   `StopTransaction` and transaction meter values. Both specifications are
    behind the OCA's download page rather than a stable deep link.
    https://openchargealliance.org/download-ocpp/
 
