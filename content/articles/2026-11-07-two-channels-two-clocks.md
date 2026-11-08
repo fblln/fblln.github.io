@@ -1,7 +1,7 @@
 +++
 title = "Two Channels, Two Clocks"
 date = "2026-11-07"
-description = "A command acknowledgement does not prove a charger started. Device telemetry and command timestamps cannot establish that link either. A generation counter carried from desired state into the device report gives the reconciler the evidence it needs."
+description = "A command acknowledgement does not prove a charger started, and comparing a device timestamp against your own cannot establish it either. What the reconciler decides, why a generation counter settles it, and why the numbers that judge a command belong to the vendor rather than the fleet."
 tags = ["Architecture", "Protocol", "Reliability", "Trade-offs"]
 +++
 
@@ -43,7 +43,7 @@ charger → manufacturer cloud → aggregator → reconciler → user interface
 The reconciler remembers what was requested and which command is outstanding.
 The aggregator translates its request into the manufacturer's API. The
 manufacturer's service delivers it over the connection the charger maintains.
-The charger runs firmware—the software inside the appliance—which decides
+The charger runs firmware (the software inside the appliance) which decides
 whether it can act and controls the hardware.
 
 On the return path, the charger sends measurements and status reports. This is
@@ -101,6 +101,31 @@ clock so the order is unambiguous:
 | 12:00:06 | The platform acknowledges the request. |
 | 12:00:10 | The charger starts charging. |
 | 12:00:20 | The old "stopped" report reaches the application. |
+
+<figure class="diagram">
+<svg viewBox="0 0 620 170" role="img" aria-label="Two horizontal time axes. The upper axis is the application's clock and carries the request at 12:00:05, its acknowledgement at 12:00:06, and the arrival of a telemetry report at 12:00:20. The lower axis is the charger's clock and carries a capture of the stopped state at 12:00:00 and the start of charging at 12:00:10. A long arrow runs from the early capture on the device axis up to the late arrival on the application axis, showing that the reading which arrives last was taken first.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ONE SEQUENCE &middot; TWO CHANNELS &middot; TWO CLOCKS</text>
+  <text x="0" y="32" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">OUR CLOCK</text>
+  <line x1="0" y1="44" x2="620" y2="44" stroke="var(--ink)"/>
+  <g stroke="var(--ink)">
+    <path d="M170 38 L170 50 M205 38 L205 50 M500 38 L500 50"/>
+  </g>
+  <text x="160" y="64" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">12:00:05 request &middot; :06 acknowledged</text>
+  <text x="620" y="64" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="end">12:00:20 the stopped report arrives</text>
+  <path d="M74 112 C 210 110, 380 80, 495 52" fill="none" stroke="var(--signal)"/>
+  <path d="M499 49 l-10 1 l5 7 z" fill="var(--signal)"/>
+  <text x="290" y="84" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="middle">captured first &middot; delivered last</text>
+  <text x="0" y="110" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">12:00:00 captures &ldquo;stopped&rdquo;</text>
+  <text x="330" y="110" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">12:00:10 starts charging</text>
+  <line x1="0" y1="122" x2="620" y2="122" stroke="var(--ink)"/>
+  <g stroke="var(--ink)">
+    <path d="M70 116 L70 128 M330 116 L330 128"/>
+  </g>
+  <text x="0" y="146" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">DEVICE CLOCK</text>
+  <text x="620" y="146" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="end">nothing on this axis is stamped by us</text>
+</svg>
+<figcaption>The charger starts charging at 12:00:10 and never tells us. What reaches us at 12:00:20 is the reading from before we asked.</figcaption>
+</figure>
 
 At 12:00:20 the application receives new information about an old state. Acting
 as though "just received" means "just measured" would make it retry a command
@@ -215,9 +240,153 @@ device running ten minutes fast makes every one of its readings look like
 evidence. A device running ten minutes slow disqualifies all of them. Either device may still execute commands correctly; its timestamp is not a
 reliable basis for this comparison.
 
+<figure class="diagram">
+<svg viewBox="0 0 620 196" role="img" aria-label="A vertical line marks the instant the command was sent. Three horizontal intervals represent one telemetry capture converted into the application's clock frame under different clock estimates. The first interval lies entirely to the right of the command line and is labelled after. The second lies entirely to the left and is labelled before. The third straddles the command line and is labelled cannot tell.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ONE CAPTURE, CONVERTED TO OUR CLOCK &middot; THREE HONEST ANSWERS</text>
+  <text x="0" y="28" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">the offset is bounded, not known, so the converted capture is an interval and not a point</text>
+  <line x1="300" y1="42" x2="300" y2="166" stroke="var(--signal)"/>
+  <text x="300" y="186" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="middle">the instant we sent the command</text>
+  <g stroke="var(--ink)">
+    <path d="M335 60 L480 60 M335 54 L335 66 M480 54 L480 66"/>
+    <path d="M120 102 L262 102 M120 96 L120 108 M262 96 L262 108"/>
+    <path d="M222 144 L392 144 M222 138 L222 150 M392 138 L392 150"/>
+  </g>
+  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
+    <text x="335" y="78">every instant in it is later than the command</text>
+    <text x="120" y="120">every instant in it is earlier</text>
+    <text x="222" y="162">the interval contains the command</text>
+  </g>
+  <g font-family="var(--font-mono)" font-size="9" text-anchor="end">
+    <text x="620" y="63" fill="var(--ink)">after</text>
+    <text x="620" y="105" fill="var(--ink)">before</text>
+    <text x="620" y="147" fill="var(--signal)">cannot tell</text>
+  </g>
+</svg>
+<figcaption>Two of these are evidence. The third is the one most implementations do not have a value for, so they round it to whichever of the other two is cheaper to code.</figcaption>
+</figure>
+
 Separating local and device timestamps in the type system helps catch
 accidental mixing, but it does not supply the missing evidence. The report
 needs to identify which desired-state update the device acted on.
+
+## What the reconciler actually decides
+
+Everything so far is the problem. The reconciler is the answer to it, and it
+is one pure function:
+
+```text
+(intent, observation, command report, clock model, current phase, now)
+    → (next phase, a command or nothing, a sentence saying why)
+```
+
+No I/O, no clock of its own, no randomness, no mutation of its inputs. The
+clock model is threaded in rather than read, which is why every pathology in
+this article is reproducible in a unit test instead of requiring a car and a
+patient afternoon.
+
+The sentence is not decoration. A loop that moves a device from one state to
+another without recording which evidence persuaded it produces incidents
+nobody can close. The same sentence goes to the audit log and to the
+user-facing fault string, so the two can never disagree about why a device is
+where it is.
+
+### Five phases, and most of them exist to stop you acting
+
+IDLE and CONVERGED both mean the device agrees with intent, and they are not
+interchangeable. CONVERGED remembers what it converged to and which generation
+did it, so a later reading that disagrees is drift and can be named as such.
+IDLE remembers nothing and treats any reading as informative, which is correct
+at a cold start and wrong everywhere else.
+
+ISSUED is the only phase carrying a deadline, and the only one that can be
+confirmed. It holds the command id and the generation, because a report is
+ours only if the id matches and a snapshot is evidence only if the generation
+has moved.
+
+SUSPENDED is what a dead feed looks like from inside the loop. Without it the
+last snapshot stays current forever and the reconciler issues commands against
+a frozen reading. It carries the watermark into the outage, so on recovery the
+loop can tell a fresh capture from the stale one it went dark holding.
+
+FAILED is terminal, deliberately. If neither channel could confirm inside a
+generous window, the right move is to surface that and stop, rather than keep
+poking a device that may be refusing for a reason.
+
+<figure class="diagram">
+<svg viewBox="0 0 620 215" role="img" aria-label="A state diagram with five boxes. IDLE moves to ISSUED when the device differs from intent. ISSUED moves to CONVERGED when confirmed, and down to FAILED on a deadline or a rejection. FAILED returns to ISSUED on a new intent or an explicit retry. A curve returns from CONVERGED to ISSUED on drift or a third-party change. IDLE drops to SUSPENDED when telemetry goes dark.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ONE DEVICE &middot; FIVE PHASES</text>
+  <g fill="none" stroke="var(--ink)">
+    <rect x="20" y="60" width="110" height="30"/>
+    <rect x="250" y="60" width="110" height="30"/>
+    <rect x="480" y="60" width="110" height="30"/>
+    <rect x="250" y="160" width="110" height="30"/>
+    <rect x="20" y="160" width="110" height="30"/>
+  </g>
+  <g font-family="var(--font-mono)" font-size="9" font-weight="700" fill="var(--ink)" text-anchor="middle">
+    <text x="75" y="79">IDLE</text>
+    <text x="305" y="79">ISSUED</text>
+    <text x="535" y="79">CONVERGED</text>
+    <text x="305" y="179">FAILED</text>
+    <text x="75" y="179">SUSPENDED</text>
+  </g>
+  <g fill="none" stroke="var(--ink)">
+    <path d="M130 75 L244 75"/>
+    <path d="M360 75 L474 75"/>
+    <path d="M285 90 L285 154"/>
+    <path d="M330 160 L330 96"/>
+    <path d="M75 90 L75 154"/>
+  </g>
+  <path d="M535 60 C 535 32, 305 32, 305 60" fill="none" stroke="var(--signal)"/>
+  <g fill="var(--ink)">
+    <path d="M250 75 l-6 -3 l0 6 z"/>
+    <path d="M480 75 l-6 -3 l0 6 z"/>
+    <path d="M285 160 l-3 -6 l6 0 z"/>
+    <path d="M330 90 l-3 6 l6 0 z"/>
+    <path d="M75 160 l-3 -6 l6 0 z"/>
+  </g>
+  <path d="M305 60 l-3 -6 l6 0 z" fill="var(--signal)"/>
+  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
+    <text x="187" y="68" text-anchor="middle">differs from intent</text>
+    <text x="417" y="68" text-anchor="middle">confirmed</text>
+    <text x="277" y="128" text-anchor="end">deadline, or rejected</text>
+    <text x="338" y="128">new intent, or explicit retry</text>
+    <text x="420" y="28" text-anchor="middle" fill="var(--signal)">drift, or someone else moved it</text>
+  </g>
+  <text x="0" y="208" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">SUSPENDED is entered from a resting phase only &middot; an in-flight command keeps its deadline and is never abandoned</text>
+</svg>
+<figcaption>The arrow that is missing is the one from ISSUED to SUSPENDED. Dropping an outstanding command because the feed went quiet is how a loop sends the same instruction twice.</figcaption>
+</figure>
+
+### Three rules, and the third is the one implementations lack
+
+**Evidence must post-date the action.** A reading taken before the command says
+nothing about the command. This is the rule my first implementation thought it
+was enforcing.
+
+**The command channel outranks telemetry when it has something real to say.**
+`REJECTED` and `APPLIED` are first-hand and need no correlation at all. They
+are also the two things many platforms never send, which is why the telemetry
+path cannot be skipped.
+
+**Correlating telemetry with an action crosses two clocks, so it has three
+answers.** After, before, and cannot tell. A reconciler that cannot say "I do
+not know yet" will eventually tell someone their car is charging when it is
+not.
+
+### Why this is a loop and not a call
+
+A charger can stop on its own. Somebody can press the button on the front
+panel. A vendor cloud can drop a command without telling anyone. None of that
+produces an event; it produces a disagreement visible only on the next
+snapshot, which means the only way to notice is to keep looking.
+
+Having a generation pays a second dividend here. A fresh reading that
+disagrees with intent while reporting the same generation we last converged at
+is positive evidence that something other than us moved the device: a command
+advances the counter, and a human at the panel does not. That is exact,
+same-channel, and needs no clock. Deciding what to do about it is a policy the
+function deliberately does not hold, because fighting a human is right for a
+charger on a tariff and wrong for someone who has just turned the heating up.
 
 ## Ordering state updates with a counter
 
@@ -349,6 +518,116 @@ Retries must preserve that distinction too. Resending an update with the same
 generation should let the receiver recognise a duplicate, rather than turn one
 intent into several independently numbered operations.
 
+## One fleet, several platforms
+
+This is the part I got wrong for longer than the clock comparison, and it is
+the harder of the two mistakes, because nothing about it looks like a bug.
+
+A reconciler that talks to one platform can treat these numbers as constants.
+A reconciler that talks to several is holding several different behaviours at
+once, and the numbers stop being constants and become a property of the
+vendor. Which vendor gives you what is not something you get to choose.
+
+Sort the fleet by what each platform can actually tell you, and it falls into
+four groups rather than two.
+
+| | **echoes a generation** | **no generation** |
+| --- | --- | --- |
+| **reports applied** | confirmed twice over | the command channel confirms it |
+| **no applied** | confirmed by integer comparison | **clock bounds, or nothing** |
+
+Only the bottom-right group needs a clock at all. For everything else the
+correlation short-circuits before any arithmetic happens. And the bottom-right
+group is not a rare corner: it is Modbus and SunSpec, where a write to an
+unimplemented register is ignored without an exception and the documented
+idiom is to read the register back on the next scan. It is OCPP 1.6, whose
+remote start carries an `idTag` and nothing that would let a later
+`StartTransaction` be tied to it.
+
+The top-left group is real too, and it comes from a specific place. Azure IoT
+Plug and Play has the device echo `av`, the desired
+version it is acknowledging, alongside a status code. AWS IoT Device Shadow
+carries a `version` that advances on every update and will reject a write that
+supplies the wrong one. Both are cloud-platform conventions rather than
+properties of the hardware, which is the useful thing to know: the counter
+lives wherever commands are serialised, and that place is usually software you
+or your vendor already operate.
+
+Two near-misses are easy to mistake for the real thing. EEBus SPINE has
+`msgCounter` and `msgCounterReference`, which tie a reply to the request that
+caused it. Matter gives every cluster a `DataVersion` that increments when
+attribute data changes, which lets a client skip a report it already has. The
+first is a correlation id and the second is cache invalidation. Neither says
+which of your desired-state updates the device applied, and that is the only
+question telemetry correlation asks.
+
+### The cost of one set of numbers
+
+A clock-only device cannot be confirmed until a capture is `maxLatency +
+skewBound` of device-clock distance past the command, because proving *after*
+needs a lower bound on the offset and the only way to get one is an upper
+bound on latency. At the bounds I declared, 120 seconds of latency and 30 of
+skew, that floor is 150 seconds. Whatever is left of the command timeout after
+the floor is the entire window in which a snapshot has to be both captured and
+delivered.
+
+My timeout was 180 seconds.
+
+<figure class="diagram">
+<svg viewBox="0 0 620 190" role="img" aria-label="Three horizontal bars on a shared axis of seconds after the command. The first is a vendor that echoes a generation, confirmed at the first capture with no floor. The second is a clock-only vendor under a three hundred second timeout: the first hundred and fifty seconds are a floor in which no answer is possible, leaving a hundred and fifty second window. The third is the same vendor under the old hundred and eighty second timeout, leaving a window of thirty seconds.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">SECONDS AFTER THE COMMAND &middot; 1 PX = 1 S</text>
+  <text x="0" y="32" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">A VENDOR THAT ECHOES A GENERATION</text>
+  <rect x="0" y="38" width="600" height="22" fill="none" stroke="var(--line)"/>
+  <rect x="28" y="38" width="4" height="22" fill="var(--signal)"/>
+  <text x="40" y="53" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">confirmed at the first capture that carries the counter &middot; no floor, no clock</text>
+  <text x="0" y="84" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">CLOCK-ONLY &middot; 300 S TIMEOUT</text>
+  <rect x="0" y="90" width="150" height="22" fill="var(--ink)" opacity="0.07"/>
+  <rect x="150" y="90" width="150" height="22" fill="var(--signal)" opacity="0.18"/>
+  <rect x="0" y="90" width="300" height="22" fill="none" stroke="var(--line)"/>
+  <text x="75" y="105" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">no answer possible</text>
+  <text x="225" y="105" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="middle">150 s of window</text>
+  <text x="0" y="136" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">CLOCK-ONLY &middot; THE 180 S TIMEOUT IT HAD</text>
+  <rect x="0" y="142" width="150" height="22" fill="var(--ink)" opacity="0.07"/>
+  <rect x="150" y="142" width="30" height="22" fill="var(--signal)" opacity="0.18"/>
+  <rect x="0" y="142" width="180" height="22" fill="none" stroke="var(--line)"/>
+  <text x="75" y="157" font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">no answer possible</text>
+  <text x="190" y="157" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">30 s</text>
+  <g stroke="var(--line)">
+    <path d="M0 170 L0 176 M150 170 L150 176 M180 170 L180 176 M300 170 L300 176"/>
+  </g>
+  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">
+    <text x="0" y="187">0</text>
+    <text x="150" y="187">150</text>
+    <text x="180" y="187">180</text>
+    <text x="300" y="187">300</text>
+  </g>
+</svg>
+<figcaption>Thirty seconds in which a snapshot had to be both taken and delivered. A fleet reporting once a minute fails commands it applied, and the reason string blames the clock bounds rather than the deadline that was too short to use them.</figcaption>
+</figure>
+
+A device reporting every sixty seconds would usually miss that window, and the
+loop would report `FAILED` for a command that worked. Widening the timeout
+fixes it, and then every well-behaved vendor pays for the worst one: a
+platform that echoes a generation and could answer in seconds now waits five
+minutes before it will tell anyone a command failed.
+
+So the three numbers belong to the vendor, not to the fleet. The odd part is
+that my own system already believed this everywhere except here. The
+backpressure layer keeps a rate limiter and a circuit breaker per vendor,
+because a quota belongs to a vendor. The readout tallies correlation outcomes
+per vendor, with a comment I had written myself saying that a fleet average
+hides the one vendor that is the problem. Only the numbers deciding whether a
+command succeeded were global, and that is the sort of inconsistency that
+survives review because each half looks reasonable on its own.
+
+The readout is also the instrument for setting them, which is the part that
+makes this tractable rather than guesswork. A vendor sitting at a high
+clock-fallback rate is telling you it needs room. A vendor at zero is telling
+you its deadline can be cut. A high *unknown* rate on top of a high fallback
+rate is a different message again: the bounds declared for that vendor are too
+loose for its feed, and no amount of extra timeout will fix an interval that
+always straddles the command.
+
 ## The charger was charging and I reported that I could not tell
 
 Two scenarios from the original clock-based implementation show why I want the
@@ -356,6 +635,44 @@ protocol to carry a generation. They use the same capture interval,
 delivery latency, actuation delay, and command. The only difference is whether
 the device reports the generation it last applied, and a test asserts they
 differ in nothing else.
+
+<figure class="diagram">
+<svg viewBox="0 0 620 232" role="img" aria-label="The same five-minute run drawn twice. In both, the ground truth is that the charger starts charging twenty seconds after the command and keeps charging. Without a counter the phase stays ISSUED for the whole run and ends in FAILED at five minutes. With a counter the phase becomes CONVERGED at two minutes thirty, when the device reports the generation it applied.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">THE SAME RUN, TWICE &middot; THE ONLY DIFFERENCE IS WHETHER THE DEVICE REPORTS A GENERATION</text>
+  <text x="0" y="34" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">WITHOUT A COUNTER</text>
+  <text x="0" y="52" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">truth</text>
+  <rect x="97" y="42" width="523" height="14" fill="var(--ink)" opacity="0.14"/>
+  <rect x="60" y="42" width="560" height="14" fill="none" stroke="var(--line)"/>
+  <text x="104" y="52" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">charging, and stays charging</text>
+  <text x="0" y="74" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">phase</text>
+  <rect x="60" y="64" width="560" height="14" fill="none" stroke="var(--line)"/>
+  <text x="66" y="74" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ISSUED &middot; no snapshot can be proved to post-date the command</text>
+  <rect x="616" y="64" width="4" height="14" fill="var(--signal)"/>
+  <text x="620" y="94" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="end">5:00 FAILED &middot; acknowledged, never provably observed</text>
+  <text x="0" y="128" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">WITH A COUNTER</text>
+  <text x="0" y="146" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">truth</text>
+  <rect x="97" y="136" width="523" height="14" fill="var(--ink)" opacity="0.14"/>
+  <rect x="60" y="136" width="560" height="14" fill="none" stroke="var(--line)"/>
+  <text x="104" y="146" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">charging, and stays charging</text>
+  <text x="0" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">phase</text>
+  <rect x="340" y="158" width="280" height="14" fill="var(--signal)" opacity="0.18"/>
+  <rect x="60" y="158" width="560" height="14" fill="none" stroke="var(--line)"/>
+  <rect x="338" y="158" width="4" height="14" fill="var(--signal)"/>
+  <text x="66" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">ISSUED</text>
+  <text x="348" y="168" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">CONVERGED</text>
+  <text x="620" y="188" font-family="var(--font-mono)" font-size="9" fill="var(--signal)" text-anchor="end">2:30 &middot; device reports it applied generation 1</text>
+  <g stroke="var(--line)">
+    <path d="M60 202 L60 208 M340 202 L340 208 M620 202 L620 208"/>
+  </g>
+  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)">
+    <text x="60" y="219" text-anchor="middle">0:00</text>
+    <text x="340" y="219" text-anchor="middle">2:30</text>
+    <text x="620" y="219" text-anchor="end">5:00</text>
+  </g>
+  <text x="0" y="231" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">same capture interval &middot; same delivery latency &middot; same actuation delay &middot; same command</text>
+</svg>
+<figcaption>The charger behaved identically in both runs. Only the reporting changed, and with it everything the operator was told.</figcaption>
+</figure>
 
 ```
 ## unprovable-without-a-counter
@@ -543,12 +860,37 @@ boundary first.
    order.
    https://doi.org/10.1145/359545.359563
 
+**What platforms actually offer**
+
+7. Azure IoT Plug and Play, writable-property convention — the device echoes
+   `av`, the desired-property version it is acknowledging, alongside an `ac`
+   status: 200 accepted, 202 accepted and in progress, 400 rejected, 500 threw.
+   https://learn.microsoft.com/en-us/azure/iot/concepts-convention
+
+8. SunSpec Information Model specification — a write to an unimplemented
+   register is ignored and generates no exception, and the ACKNOWLEDGE
+   exception for a slow write requires the model to carry a completion
+   register. The remaining idiom is to read the value back.
+   https://sunspec.org/wp-content/uploads/2019/08/SunSpec-Information-Models-12041.pdf
+
+9. EEBus SPINE — `msgCounter` and `msgCounterReference` tie a reply to the
+   request that caused it, which is a correlation id rather than a
+   desired-state counter. evcc issue 33789 records an Elli Charger Pro 2
+   answering a `LoadControlLimits` write successfully while charging does not
+   start. https://github.com/evcc-io/evcc/issues/33789
+
+10. Matter 1.4 core specification — every cluster carries a `DataVersion`
+    incremented when its attribute data changes, used with `DataVersionFilter`
+    to suppress reports a client already holds. Cache invalidation, not an
+    account of which desired update was applied.
+    https://csa-iot.org/wp-content/uploads/2024/11/24-27349-006_Matter-1.4-Core-Specification.pdf
+
 **My own**
 
-7. [Some Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) — the
+11. [Some Forces Do Not Resolve](/articles/some-forces-do-not-resolve/) — the
    force-and-tension distinction this article leans on, and the Kafka `acks`
    example of being told yes about something that did not happen.
 
-8. [Who Pays for the Force](/articles/who-pays-for-the-force/) — on forces from
+12. [Who Pays for the Force](/articles/who-pays-for-the-force/) — on forces from
    inside an implementation escaping into a contract, including the deadline
    a user must wait for confirmation.
