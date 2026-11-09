@@ -1,0 +1,30 @@
+# Measured voice bands for content/articles. Generated; do not hand-edit.
+#
+#   regenerate: cargo run --release --manifest-path tools/voice/Cargo.toml \
+#                 -- --calibrate --write
+#
+# corpus:  13 articles in content/articles
+# padding: 0.75 sd past the observed range
+#
+# label = low high median
+first person plural per 10k = 0.0000 123.2219 5.0994   # separates his prose from generic by 6.85 sd
+sentences per paragraph = 1.8799 3.7546 2.3750   # separates his prose from generic by 1.83 sd
+words per paragraph = 15.3831 58.9422 36.1020   # separates his prose from generic by 1.65 sd
+one-sentence paragraphs % = 8.9161 56.0431 37.9747   # separates his prose from generic by 1.57 sd
+colons per 1k words = 4.9641 22.6994 14.5612   # separates his prose from generic by 1.45 sd
+
+# The numbers the bands were measured from.
+# article                                            words   we/10k  s/para  w/para  1-sent%  colon/1k
+# 2026-07-19-architecture-must-follow-force           1080    101.9    3.46    38.9     17.9      10.2
+# 2026-07-25-two-kilobytes-and-no-operating-system    1961      5.1    2.85    49.6     22.5       7.6
+# 2026-07-28-risk-complexity-and-force                1758     39.8    2.57    27.1     35.4       9.1
+# 2026-07-29-the-lookup-that-saves-the-handshake      2620      3.8    2.38    41.2     39.1      13.0
+# 2026-07-30-who-pays-for-the-force                   2535      3.9    2.24    32.4     38.0      15.4
+# 2026-08-07-performance-is-making-gradle-less-gradle  1399      0.0    2.19    22.0     48.4      20.0
+# 2026-08-08-the-runtime-is-what-is-left-over         3492      0.0    2.17    37.6     37.2      15.8
+# 2026-08-13-the-browser-was-never-the-smart-client   1765      5.7    2.59    36.1     24.5      11.9
+# 2026-08-14-hateoas-priced-the-wrong-change          2541      0.0    2.32    30.3     38.1      14.6
+# 2026-08-15-stable-verbs-dynamic-affordances         2315      8.6    2.28    29.7     38.5      14.7
+# 2026-08-30-some-forces-do-not-resolve               1643      6.1    2.35    27.4     38.3      14.6
+# 2026-11-07-the-health-check-was-a-reverse-shell     2405      0.0    2.45    37.7     45.3      17.9
+# 2026-11-07-two-channels-two-clocks                  6018     26.6    3.10    52.4     16.5      10.0

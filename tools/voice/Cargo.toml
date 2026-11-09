@@ -1,0 +1,20 @@
+[package]
+name = "voice"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Draft voice check, run by hand or by an agent while writing an article. Host
+# side only, like tools/blog and tools/site: never linked into the wasm app, so
+# it cannot move the compressed WASM budget.
+#
+# No dependencies, deliberately. Everything it needs is line-oriented string
+# work over Markdown this repo already controls the shape of. pulldown-cmark
+# would parse the Markdown more correctly than the stripper below, but it would
+# also hand back a token stream that still has to be reassembled into
+# paragraphs, and the stripping rules here have to match a specific set of
+# editorial decisions (see `strip` in src/lib.rs) rather than the spec.
+[dependencies]
+
+[profile.release]
+opt-level = 1

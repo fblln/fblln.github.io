@@ -33,6 +33,7 @@ jobs:
         run: |
           cargo fmt --check
           cargo fmt --check --manifest-path shared/Cargo.toml
+          cargo fmt --check --manifest-path tools/voice/Cargo.toml
       - name: Unit tests
         run: |
           cargo test
@@ -40,6 +41,7 @@ jobs:
           cargo test --manifest-path shared/Cargo.toml
           cargo test --manifest-path tools/site/Cargo.toml
           cargo test --manifest-path tools/blog/Cargo.toml
+          cargo test --manifest-path tools/voice/Cargo.toml
       - name: Check WebAssembly target
         run: cargo check --target wasm32-unknown-unknown --no-default-features --features hydrate
       - name: Build release site
