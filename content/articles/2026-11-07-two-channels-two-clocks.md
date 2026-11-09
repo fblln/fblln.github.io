@@ -438,15 +438,6 @@ and
 [kstatus](https://github.com/kubernetes-sigs/cli-utils/blob/master/pkg/kstatus/README.md)
 make that separation useful to clients waiting for reconciliation.
 
-AWS IoT Device Shadow uses a related versioning mechanism. Its document version
-advances on updates, and a caller can supply the version it expects to prevent
-a conflicting write. A `clientToken` correlates a response with its request.
-These identify document revisions and requests; the shadow version alone does
-not prove that hardware applied a desired state. That still needs a device
-report with the appropriate application-level meaning. The distinction is
-visible in the [shadow document
-contract](https://docs.aws.amazon.com/iot/latest/developerguide/device-shadow-document.html).
-
 Lamport's logical clocks provide the basis for ordering events without
 wall-clock comparison. Here the narrower requirement is a sequence of
 desired-state revisions with one allocation authority, carried into the
@@ -502,31 +493,23 @@ device and surviving devices that reboot mid-process. On the charger side
 The remaining work is to connect the desired generation to the device result,
 handle stale reports and retries, and enforce a deadline.
 
-## The counter does not choose the deadline
-
-A generation tells the loop which update a report belongs to. It cannot make a
-report arrive. The device may be offline, the command may be stuck in a queue,
-or the actuation may have failed without producing a result.
-
-The timeout therefore remains a policy choice. A longer timeout gives delayed
-confirmation more time to arrive and makes users wait longer when it never
-will. The loop should distinguish an explicit rejection from a deadline reached
-without confirmation. Only the first establishes that the device refused the
-request; the second leaves the physical outcome unresolved.
-
-Retries must preserve that distinction too. Resending an update with the same
-generation should let the receiver recognise a duplicate, rather than turn one
-intent into several independently numbered operations.
-
 ## One fleet, several platforms
 
-This is the part I got wrong for longer than the clock comparison, and it is
-the harder of the two mistakes, because nothing about it looks like a bug.
+A generation tells the loop which update a report belongs to. It cannot make a
+report arrive. The device may be offline, the command stuck in a queue, the
+actuation failed without producing a result. So a deadline is still needed, and
+a deadline is a policy choice: longer gives delayed confirmation more time to
+arrive and makes users wait longer when it never will. Only an explicit
+rejection establishes that the device refused; a deadline reached in silence
+leaves the physical outcome unresolved, and the two must not be reported as one
+thing.
 
-A reconciler that talks to one platform can treat these numbers as constants.
-A reconciler that talks to several is holding several different behaviours at
-once, and the numbers stop being constants and become a property of the
-vendor. Which vendor gives you what is not something you get to choose.
+Choosing that number is where I got it wrong for longer than the clock
+comparison, and it is the harder of the two mistakes, because nothing about it
+looks like a bug. A reconciler talking to one platform can treat the deadline
+and its clock bounds as constants. One talking to several is holding several
+different behaviours at once, and which vendor gives you what is not something
+you get to choose.
 
 Sort the fleet by what each platform can actually tell you, and it falls into
 four groups rather than two.
@@ -545,13 +528,14 @@ remote start carries an `idTag` and nothing that would let a later
 `StartTransaction` be tied to it.
 
 The top-left group is real too, and it comes from a specific place. Azure IoT
-Plug and Play has the device echo `av`, the desired
-version it is acknowledging, alongside a status code. AWS IoT Device Shadow
-carries a `version` that advances on every update and will reject a write that
-supplies the wrong one. Both are cloud-platform conventions rather than
-properties of the hardware, which is the useful thing to know: the counter
-lives wherever commands are serialised, and that place is usually software you
-or your vendor already operate.
+Plug and Play, above, is one: the hub mints the version and the device echoes
+it. AWS IoT Device Shadow is another, with a `version` that advances on every
+update and rejects a write supplying the wrong one, though that version
+identifies a document revision rather than proving the hardware applied
+anything. Both are cloud-platform conventions rather than properties of the
+hardware, which is the useful thing to know: the counter lives wherever
+commands are serialised, and that place is usually software you or your vendor
+already operate.
 
 Two near-misses are easy to mistake for the real thing. EEBus SPINE has
 `msgCounter` and `msgCounterReference`, which tie a reply to the request that
@@ -607,38 +591,34 @@ My timeout was 180 seconds.
 
 A device reporting every sixty seconds would usually miss that window, and the
 loop would report `FAILED` for a command that worked. Widening the timeout
-fixes it, and then every well-behaved vendor pays for the worst one: a
-platform that echoes a generation and could answer in seconds now waits five
-minutes before it will tell anyone a command failed.
+fixes that vendor and taxes every other one: a platform that echoes a
+generation and could answer in seconds then waits five minutes before telling
+anyone a command failed. So the three numbers belong to the vendor, not to the
+fleet.
 
-So the three numbers belong to the vendor, not to the fleet. The odd part is
-that my own system already believed this everywhere except here. The
-backpressure layer keeps a rate limiter and a circuit breaker per vendor,
-because a quota belongs to a vendor. The readout tallies correlation outcomes
-per vendor, with a comment I had written myself saying that a fleet average
-hides the one vendor that is the problem. Only the numbers deciding whether a
-command succeeded were global, and that is the sort of inconsistency that
-survives review because each half looks reasonable on its own.
+The odd part is that my own system already believed this everywhere except
+here. The backpressure layer keeps a rate limiter and a circuit breaker per
+vendor, because a quota belongs to a vendor. The readout tallies correlation
+outcomes per vendor, with a comment I had written myself saying that a fleet
+average hides the one vendor that is the problem. Only the numbers deciding
+whether a command succeeded were global, and that is the sort of inconsistency
+that survives review because each half looks reasonable on its own.
 
-The readout is also the instrument for setting them, which is the part that
-makes this tractable rather than guesswork. A vendor sitting at a high
-clock-fallback rate is telling you it needs room. A vendor at zero is telling
-you its deadline can be cut. A high *unknown* rate on top of a high fallback
-rate is a different message again: the bounds declared for that vendor are too
-loose for its feed, and no amount of extra timeout will fix an interval that
-always straddles the command.
+They are resolved per vendor now, merged over the fleet defaults so a vendor
+states only what differs and an unconfigured one still reconciles. An unknown
+key or a non-numeric value stops the process at startup rather than quietly
+reverting, because a tuning change that looks applied and is not is the
+hardest kind to debug. The same readout says what to set: a vendor at a high
+clock-fallback rate needs room, a vendor at zero can have its deadline cut,
+and a high *unknown* rate on top of a high fallback rate means the declared
+bounds are too loose for that feed, which no amount of extra timeout will fix.
 
-The three numbers are now resolved per vendor, merged over the fleet defaults
-so that a vendor states only what differs and an unconfigured one still
-reconciles. A key that does not exist, or a value that is not a number, stops
-the process at startup rather than reverting to a default, because a tuning
-change that looks applied and is not is the hardest kind to debug. The window
-check runs per vendor too: a hand-written override is the easiest place to put
-a timeout under its own clock floor, and that failure is silent.
-
-One consequence reads like a bug and is not. A vendor whose devices echo a
-generation can legitimately run a *negative* window. It will never consult a
-clock, so the floor it cannot clear is a floor it never stands on.
+The window check runs per vendor too, because a hand-written override is the
+easiest place to put a timeout under its own clock floor and that failure is
+silent. One consequence of checking it per vendor reads like a bug and is not:
+a vendor whose devices echo a generation can legitimately run a *negative*
+window. It never consults a clock, so the floor it cannot clear is a floor it
+never stands on.
 
 ## The charger was charging and I reported that I could not tell
 
@@ -700,21 +680,15 @@ differ in nothing else.
    2:30  CONVERGED - device reports it applied generation 1
 ```
 
-The `truth` lane is the simulator's ground truth, which the reconciler cannot
-see. In the first scenario the charger starts charging twenty seconds in and
-keeps charging for the rest of the run. The command worked. The loop reports
-`FAILED` at five minutes, because under the declared bounds no snapshot can
-ever be *proved* to post-date the command, and the acknowledgement it did get
-proves only that the instruction arrived.
+That is the simulator's own output. The `truth` lane is ground truth, which the
+reconciler cannot see, and the `reported` lane is every acknowledgement it ever
+received: `a` for accepted, all the way across, never anything stronger.
 
-Here `FAILED` means the confirmation deadline expired, not that the charger
-necessarily stayed stopped. The second scenario supplies the missing applied
-generation and lets the loop confirm the command at 2:30. This is why I would
-require generation reporting in the protocol rather than keep tuning clock
-estimates.
-
-In these scenarios, the generation counter supplies the evidence that the
-timestamp comparison cannot.
+`FAILED` there means the confirmation deadline expired, not that the charger
+stayed stopped. The distinction is the whole reason I would require generation
+reporting in a protocol rather than keep tuning clock estimates: one run can be
+confirmed at 2:30 and the other cannot be confirmed at all, and the hardware
+did the same thing in both.
 
 ## What to show someone who is waiting
 
@@ -792,11 +766,9 @@ side effects. Disabling a button while confirmation is pending helps the user;
 it cannot substitute for these guarantees across lost responses, multiple tabs,
 or process restarts.
 
-The repository exposes this through its API, without a control frontend. Request
-keys are retained durably with no automatic expiry. The tests cover concurrent
-submissions, persistence after reconnecting, payload conflicts, unchanged
-override metadata, and explicit retry. A production service also needs a
-retention policy and tenant-scoped authentication around that contract.
+The repository exposes this through its API and has no control frontend. Keys
+are retained durably with no automatic expiry, so a production service needs a
+retention policy and tenant-scoped authentication around the same contract.
 
 ## A stamp on my own clock still could not order two reports
 
