@@ -7,11 +7,11 @@
 # padding: 0.75 sd past the observed range
 #
 # label = low high median
-first person plural per 10k = 0.0000 123.2219 5.0994   # separates his prose from generic by 6.85 sd
-sentences per paragraph = 1.8799 3.7546 2.3750   # separates his prose from generic by 1.83 sd
-words per paragraph = 15.3831 58.9422 36.1020   # separates his prose from generic by 1.65 sd
-one-sentence paragraphs % = 8.9161 56.0431 37.9747   # separates his prose from generic by 1.57 sd
-colons per 1k words = 4.9641 22.6994 14.5612   # separates his prose from generic by 1.45 sd
+first person plural per 10k = 0.0000 123.1323 5.0994   # separates his prose from generic by 6.85 sd
+sentences per paragraph = 1.9074 3.7271 2.3535   # separates his prose from generic by 1.83 sd
+words per paragraph = 16.2926 55.3012 36.1020   # separates his prose from generic by 1.65 sd
+one-sentence paragraphs % = 11.2751 55.0196 37.9747   # separates his prose from generic by 1.57 sd
+colons per 1k words = 5.0571 22.6063 14.5612   # separates his prose from generic by 1.45 sd
 
 # The numbers the bands were measured from.
 # article                                            words   we/10k  s/para  w/para  1-sent%  colon/1k
@@ -27,4 +27,4 @@ colons per 1k words = 4.9641 22.6994 14.5612   # separates his prose from generi
 # 2026-08-15-stable-verbs-dynamic-affordances         2315      8.6    2.28    29.7     38.5      14.7
 # 2026-08-30-some-forces-do-not-resolve               1643      6.1    2.35    27.4     38.3      14.6
 # 2026-11-07-the-health-check-was-a-reverse-shell     2405      0.0    2.45    37.7     45.3      17.9
-# 2026-11-07-two-channels-two-clocks                  6018     26.6    3.10    52.4     16.5      10.0
+# 2026-11-07-two-channels-two-clocks                  4226      7.1    2.35    42.7     31.3      12.1
