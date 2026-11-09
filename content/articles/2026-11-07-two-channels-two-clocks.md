@@ -628,6 +628,18 @@ rate is a different message again: the bounds declared for that vendor are too
 loose for its feed, and no amount of extra timeout will fix an interval that
 always straddles the command.
 
+The three numbers are now resolved per vendor, merged over the fleet defaults
+so that a vendor states only what differs and an unconfigured one still
+reconciles. A key that does not exist, or a value that is not a number, stops
+the process at startup rather than reverting to a default, because a tuning
+change that looks applied and is not is the hardest kind to debug. The window
+check runs per vendor too: a hand-written override is the easiest place to put
+a timeout under its own clock floor, and that failure is silent.
+
+One consequence reads like a bug and is not. A vendor whose devices echo a
+generation can legitimately run a *negative* window. It will never consult a
+clock, so the floor it cannot clear is a floor it never stands on.
+
 ## The charger was charging and I reported that I could not tell
 
 Two scenarios from the original clock-based implementation show why I want the
@@ -785,6 +797,109 @@ keys are retained durably with no automatic expiry. The tests cover concurrent
 submissions, persistence after reconnecting, payload conflicts, unchanged
 override metadata, and explicit retry. A production service also needs a
 retention policy and tenant-scoped authentication around that contract.
+
+## A stamp on my own clock still could not order two reports
+
+The three identities above are the design working. This is the part where it
+nearly did not.
+
+A report has to be stored before it can be matched, and storage needs an order.
+The command channel's reports go into one row per device, last write wins, and
+I was comfortable with that because `at` is on our clock. This article is about
+two clocks and this is not that case: the platform stamps `at` on our side of
+the boundary, so comparing two of them is sound arithmetic on one timeline.
+
+It is still the wrong answer. `at` records when the platform acknowledged a
+command, not which command it is about. A platform is free to acknowledge a
+superseded command after it has acknowledged the one that replaced it, because
+a queue drains unevenly and a retry lands when it lands. The stale report then
+arrives carrying the newest stamp, last-write-wins evicts the confirmation for
+the command actually in flight, and the device goes back to waiting for
+telemetry or for its deadline to tell it something it had already been told.
+
+<figure class="diagram">
+<svg viewBox="0 0 620 160" role="img" aria-label="A single timeline on the application's clock. A first command is issued, then superseded by a second. The acknowledgement for the second command arrives stamped at 2000, and the acknowledgement for the first arrives later stamped at 3000. Ordering the two by stamp keeps the superseded command and discards the confirmation for the one in flight. Ordering by command sequence keeps the right one.">
+  <text x="0" y="12" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">TWO REPORTS, ONE ROW &middot; THE STAMP SAYS THE WRONG ONE IS NEWER</text>
+  <text x="0" y="32" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">OUR CLOCK &middot; the platform stamps `at`, so no clock boundary is crossed here</text>
+  <line x1="0" y1="50" x2="620" y2="50" stroke="var(--ink)"/>
+  <g stroke="var(--ink)">
+    <path d="M60 44 L60 56 M180 44 L180 56 M320 44 L320 56 M470 44 L470 56"/>
+  </g>
+  <g font-family="var(--font-mono)" font-size="9" fill="var(--muted)" text-anchor="middle">
+    <text x="60" y="70">issue /1</text>
+    <text x="180" y="70">supersede, issue /2</text>
+    <text x="320" y="70">report /2 &middot; at 2000</text>
+    <text x="470" y="70">report /1 &middot; at 3000</text>
+  </g>
+  <text x="0" y="104" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">BY `at`</text>
+  <text x="108" y="104" font-family="var(--font-mono)" font-size="9" fill="var(--signal)">3000 &gt; 2000, so the row becomes /1 &middot; the confirmation for /2 is gone</text>
+  <text x="0" y="130" font-family="var(--font-mono)" font-size="9" fill="var(--ink)">BY SEQUENCE</text>
+  <text x="108" y="130" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">1 &lt; 2, so the row stays /2, and the late arrival changes nothing</text>
+  <text x="0" y="154" font-family="var(--font-mono)" font-size="9" fill="var(--muted)">`at` still decides between two reports for the SAME command, where PENDING must give way to APPLIED</text>
+</svg>
+<figcaption>Both stamps are ours. Neither crosses a clock boundary. The later one is still about the older command.</figcaption>
+</figure>
+
+It never produced a wrong answer, which is why it survived: the matcher checks
+the command id, so a stale report is discarded rather than believed. What was
+lost was the confirmation, and a lost confirmation looks exactly like a slow
+device.
+
+The fix is the shape of everything else here. Order by the sequence inside the
+command id, which is our own counter, advanced once per minted command and
+never reused. `at` survives as the tiebreak within a single command, so a
+`PENDING` still gives way to an `APPLIED`. An id the system cannot parse orders
+below everything, so it can fill an empty row and can never evict a real one.
+
+The lesson is narrower than the one about clocks, and more irritating for it. A
+timestamp can be in the right frame of reference and still not order the events
+you care about, because it records when something was said rather than what it
+was said about.
+
+## Measuring a device without scoring it
+
+Once the loop runs against a real fleet, the question stops being whether the
+design is right and becomes which devices are bad. That turns out to be two
+questions wearing one coat.
+
+The decision log had the evidence and not the shape. A decision is written on
+every wake, so counting rows by phase counts ticks: a device sitting in
+`ISSUED` for ten wakes looks like ten of something. What a verdict actually
+looks like in the log is a *transition* out of `ISSUED`, and that happens
+exactly once per command that got one. Recording the phase each decision moved
+away from is the whole change, and it turns an audit log into a denominator.
+
+```text
+device          vendor      cmds   confirmed   rejected   unconfirmed   drift   dark
+dev-0012        tortoise      39       20.5%          0            31       0     17
+dev-0007        hare          25       80.0%          5             0       0      0
+dev-0000        hare         145       97.9%          0             3       0      0
+dev-0031        tortoise       0         n/a          0             0       9      0
+```
+
+I did not combine these into a score, and that is the only interesting decision
+in the table. The four outcomes have four different owners. A rejection is the
+vendor answering no, which is the only crisp failure this system can observe.
+An unconfirmed is nobody answering before the deadline, which on a clock-only
+device may say more about the telemetry interval than about the charger. Drift
+is somebody at the device disagreeing with us, detected exactly, because a
+command advances the generation and a human at the panel does not. Dark is the
+feed. A weighted average of those moves for reasons you cannot act on, which is
+how a reliability dashboard ends up being watched by nobody.
+
+`dev-0012` is the row that makes the case. Twenty per cent confirmed reads as a
+broken charger until the next two columns say thirty-one unconfirmed, zero
+rejected, seventeen periods dark. Nothing there is evidence about the hardware.
+That device has a telemetry problem, and a composite score would have hidden it
+behind a number that looked like a verdict on the charger.
+
+Two absences are deliberate. A command superseded mid-flight is not counted
+either way, because it leaves `ISSUED` for `ISSUED`, which is not a transition,
+and it never got a verdict: counting it as a failure would blame a device for
+an intent change. A device with no verdict yet shows `n/a` and sorts last
+rather than first, because an absence of evidence is not a good score, and a
+worst-first list that opens with devices nothing has been asked of sends
+somebody to look at the wrong rack.
 
 ## What the invariants caught that I did not
 
