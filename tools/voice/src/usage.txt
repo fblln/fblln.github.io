@@ -1,0 +1,19 @@
+voice — check an article draft against the voice of the published corpus.
+
+  voice <draft.md>                check against the stored bands; exit 1 on drift
+  voice <draft.md> --recalibrate  check against the corpus as it is right now
+  voice --calibrate               show the bands and every published article
+  voice --calibrate --write       regenerate tools/voice/bands.txt
+  --corpus <dir>                  default content/articles
+
+Five measurements, strongest measured signal first. Each separated this
+author's published prose from generic technical prose written with no
+knowledge of him; readability scores and syllable counts did not, and are
+deliberately absent.
+
+The bands live in tools/voice/bands.txt, compiled in, with every article's
+numbers beside them. They are stored rather than recomputed because a gate
+that recalibrates itself cannot fail: one article with long paragraphs raises
+the ceiling for the next one, and the voice ratchets with nothing going red.
+
+Exit status: 0 pass, 1 drift, 2 could not run.
